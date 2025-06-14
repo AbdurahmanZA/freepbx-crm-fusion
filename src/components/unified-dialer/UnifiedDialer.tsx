@@ -366,6 +366,58 @@ const UnifiedDialer = ({ onLeadCreated }: UnifiedDialerProps) => {
     }
   };
 
+  // --- Simulate available leads. In a real app, fetch or receive this from props/context/global state ---
+  const allLeads = [
+    {
+      id: "1",
+      name: "John Smith",
+      company: "Acme Corp",
+      phone: "+1-555-0123",
+      email: "john@acme.com",
+      status: "new",
+      priority: "high",
+      source: "Website",
+      assignedAgent: "Sarah Wilson",
+      lastContact: "Never",
+      notes: "Interested in enterprise solution"
+    },
+    {
+      id: "2",
+      name: "Sarah Johnson",
+      company: "Tech Solutions",
+      phone: "+1-555-0456",
+      email: "sarah@techsol.com",
+      status: "contacted",
+      priority: "medium",
+      source: "Referral",
+      assignedAgent: "Mike Davis",
+      lastContact: "2024-06-09",
+      notes: "Requested callback for pricing"
+    },
+    // ... You can add more sample leads, or ideally, fetch from a shared source
+  ];
+  // ---
+
+  // Helper: Find lead matching phone/leadId (normalize for dashes/spaces etc)
+  function findMatchedLead() {
+    // Try to match by leadId if present in emailPreviewData or phoneNumber
+    let phoneLookup = phoneNumber ? phoneNumber.replace(/[\s\-]/g, '') : '';
+    let lead = null;
+    // Try to match by leadId (string or number)
+    if (emailPreviewData?.leadId) {
+      lead = allLeads.find(
+        l => l.id === emailPreviewData.leadId?.toString()
+      );
+    }
+    // If not found, try to match by phone
+    if (!lead && phoneLookup) {
+      lead = allLeads.find(
+        l => (l.phone || '').replace(/[\s\-]/g, '') === phoneLookup
+      );
+    }
+    return lead;
+  }
+
   const prepareEmailPreview = () => {
     if (!contactEmail || !selectedTemplate) {
       toast({
@@ -391,27 +443,50 @@ const UnifiedDialer = ({ onLeadCreated }: UnifiedDialerProps) => {
         return;
       }
 
-      const companyName = localStorage.getItem('smtp_from_name') || 'Your Company';
-      const formLink = `${window.location.origin}/customer-form`;
-      
-      const subject = template.subject
-        .replace(/\{\{customerName\}\}/g, contactName || 'Valued Customer')
-        .replace(/\{\{companyName\}\}/g, companyName);
-      
-      const body = template.body
-        .replace(/\{\{customerName\}\}/g, contactName || 'Valued Customer')
-        .replace(/\{\{formLink\}\}/g, formLink)
-        .replace(/\{\{companyName\}\}/g, companyName)
-        .replace(/\{\{phone\}\}/g, phoneNumber)
-        .replace(/\{\{email\}\}/g, contactEmail);
+      // --- Main update: fill variables from the matched lead when possible ---
+      const matchedLead = findMatchedLead();
+
+      // Fallbacks
+      const fallback = {
+        name: contactName || "Valued Customer",
+        company: (localStorage.getItem('smtp_from_name') || 'Unknown Company'),
+        phone: phoneNumber || "N/A",
+        email: contactEmail || "N/A"
+      };
+
+      // Data to use in template variable replacements
+      const templateVars = {
+        customerName: matchedLead?.name || fallback.name,
+        companyName: matchedLead?.company || fallback.company,
+        phone: matchedLead?.phone || fallback.phone,
+        email: matchedLead?.email || fallback.email,
+        assignedAgent: matchedLead?.assignedAgent || (user?.name || "CRM Agent"),
+        notes: matchedLead?.notes || "",
+        formLink: `${window.location.origin}/customer-form?lead=${matchedLead?.id || ''}`,
+        lastContact: matchedLead?.lastContact || "",
+        status: matchedLead?.status || "",
+        priority: matchedLead?.priority || "",
+        source: matchedLead?.source || "",
+      };
+
+      // Replace all template variables
+      let subject = template.subject;
+      let body = template.body;
+
+      Object.entries(templateVars).forEach(([key, value]) => {
+        const reg = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
+        subject = subject.replace(reg, value);
+        body = body.replace(reg, value);
+      });
 
       setEmailPreviewData({
-        to: contactEmail,
+        to: templateVars.email,
         subject,
         body,
         templateName: template.name,
-        contactName,
-        phone: phoneNumber
+        contactName: templateVars.customerName,
+        phone: templateVars.phone,
+        leadId: matchedLead?.id,
       });
 
       setShowEmailPreview(true);
