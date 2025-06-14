@@ -1,8 +1,6 @@
-
 import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import LeadManagement from "@/components/LeadManagement";
-import CallCenter from "@/components/CallCenter";
 import CallbackCalendar from "@/components/callback-calendar/CallbackCalendar";
 import ReportsAnalytics from "@/components/ReportsAnalytics";
 import IntegrationSettings from "@/components/IntegrationSettings";
@@ -71,14 +69,10 @@ const IndexPage = () => {
 
       <div className="pb-32">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className={`grid w-full gap-1 ${canManageUsers ? 'grid-cols-6' : 'grid-cols-5'} p-1`}>
+          <TabsList className={`grid w-full gap-1 ${canManageUsers ? 'grid-cols-5' : 'grid-cols-4'} p-1`}>
             <TabsTrigger value="leads" className="flex-1 flex items-center gap-2">
               <Users className="w-4 h-4 shrink-0" />
               Lead Management
-            </TabsTrigger>
-            <TabsTrigger value="calls" className="flex-1 flex items-center gap-2">
-              <Phone className="w-4 h-4 shrink-0" />
-              Call Center
             </TabsTrigger>
             <TabsTrigger value="calendar" className="flex-1 flex items-center gap-2">
               <Calendar className="w-4 h-4 shrink-0" />
@@ -105,9 +99,6 @@ const IndexPage = () => {
           </TabsList>
           <TabsContent value="leads">
             <LeadManagement userRole={user.role} />
-          </TabsContent>
-          <TabsContent value="calls">
-            <CallCenter userRole={user.role} />
           </TabsContent>
           <TabsContent value="calendar">
             <CallbackCalendar userRole={user.role} />
@@ -203,4 +194,3 @@ const IndexPage = () => {
 };
 
 export default IndexPage;
-
