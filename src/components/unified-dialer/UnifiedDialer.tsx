@@ -173,6 +173,32 @@ const UnifiedDialer = ({ onLeadCreated }: UnifiedDialerProps) => {
     }
   }, [callEvents, activeCall, user?.extension]);
 
+  const createLeadFromManualCall = (phone: string, name: string) => {
+    const newLead = {
+      name: name || 'Unknown Contact',
+      phone: phone,
+      notes: `Manual call initiated from UnifiedDialer on ${new Date().toLocaleString()}`
+    };
+
+    // Always dispatch custom event to notify LeadManagement component
+    const event = new CustomEvent('newLeadCreated', { detail: newLead });
+    window.dispatchEvent(event);
+
+    console.log('📞 [UnifiedDialer] Created lead from manual call:', newLead);
+
+    // Also call the optional callback if provided
+    if (onLeadCreated) {
+      onLeadCreated(newLead);
+    }
+
+    toast({
+      title: "Lead Created",
+      description: `New lead created for ${newLead.name}`,
+    });
+
+    return newLead;
+  };
+
   const performCall = async (phone: string, name: string, leadId?: string) => {
     if (!user?.extension || !phone) {
       toast({
@@ -229,13 +255,9 @@ const UnifiedDialer = ({ onLeadCreated }: UnifiedDialerProps) => {
           description: `Calling ${newCall.leadName} from extension ${user.extension}`,
         });
 
-        // Create lead if needed (for manual calls)
-        if (onLeadCreated && name && !leadId) {
-          onLeadCreated({
-            name: name,
-            phone: phone,
-            notes: 'Lead created from call'
-          });
+        // Create lead for ALL manual calls (when no leadId is provided)
+        if (!leadId) {
+          createLeadFromManualCall(phone, name || 'Unknown Contact');
         }
       } else {
         throw new Error('Failed to originate call');
