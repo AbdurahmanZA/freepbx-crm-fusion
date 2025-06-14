@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -182,6 +181,18 @@ const DatabaseManagementCard = () => {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* Added info box for cloud/advanced backup features */}
+        <div className="mb-4 p-2 bg-blue-50 border border-blue-200 rounded text-blue-800 text-sm">
+          For automated scheduled backups and secure cloud storage, connect your CRM to Supabase.<br/>
+          <a 
+            href="https://docs.lovable.dev/integrations/supabase/" 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className="underline text-blue-700"
+          >
+            Learn more about cloud backup &rarr;
+          </a>
+        </div>
         {/* Export/Import Section */}
         <div className="space-y-4">
           <h3 className="text-lg font-semibold">Import & Export</h3>

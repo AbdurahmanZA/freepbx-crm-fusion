@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import LeadManagement from "@/components/LeadManagement";
@@ -11,8 +10,9 @@ import KnowledgeBase from "@/components/knowledge-base/KnowledgeBase";
 import UnifiedDialer from "@/components/unified-dialer/UnifiedDialer";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAMIContext } from "@/contexts/AMIContext";
+import DatabaseManagementCard from "@/components/integration/DatabaseManagementCard";
 
-const Index = () => {
+const IndexPage = () => {
   const { user } = useAuth();
   const { connect, isConnected } = useAMIContext();
   const [activeTab, setActiveTab] = useState("leads");
@@ -34,7 +34,10 @@ const Index = () => {
   };
 
   return (
-    <div className="container mx-auto p-6">
+    <div className="space-y-8">
+      {/* --- Database Management always at the top of the dashboard --- */}
+      <DatabaseManagementCard />
+
       <div className="mb-8">
         <h1 className="text-3xl font-bold tracking-tight">
           Welcome back, {user.name}
@@ -96,4 +99,4 @@ const Index = () => {
   );
 };
 
-export default Index;
+export default IndexPage;
