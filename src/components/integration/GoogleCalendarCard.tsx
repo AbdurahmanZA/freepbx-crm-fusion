@@ -58,14 +58,20 @@ const GoogleCalendarCard = ({
       return;
     }
 
+    const redirectUri = window.location.origin;
+    console.log("Using redirect URI for Google Auth:", redirectUri, "Please add this to your Authorized redirect URIs in Google Cloud Console.");
+
     const authUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth");
     
     authUrl.searchParams.set("client_id", config.clientId);
-    authUrl.searchParams.set("redirect_uri", window.location.origin);
+    authUrl.searchParams.set("redirect_uri", redirectUri);
     authUrl.searchParams.set("response_type", "token");
     authUrl.searchParams.set("scope", "https://www.googleapis.com/auth/calendar");
     authUrl.searchParams.set("include_granted_scopes", "true");
+    authUrl.searchParams.set("prompt", "consent select_account");
     
+    console.log("Full Google Auth URL:", authUrl.toString());
+
     toast({
       title: "Redirecting to Google account sign-in...",
       description: "You will be able to connect your account for calendar sync.",
