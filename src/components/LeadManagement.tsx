@@ -442,24 +442,30 @@ const LeadManagement = ({ userRole }: LeadManagementProps) => {
     try {
       const companyName = localStorage.getItem('smtp_from_name') || 'Your Company';
       const formLink = `${window.location.origin}/customer-form?lead=${dialogLead.id}`;
-      
+
+      // Always use dialogLead's ACTUAL properties
+      const realLeadName = dialogLead.name;
+      const realLeadEmail = dialogLead.email;
+      const realLeadPhone = dialogLead.phone;
+
+      // These substitutions ensure we use the latest, user-edited info
       const subject = template.subject
-        .replace('{{customerName}}', dialogLead.name)
+        .replace('{{customerName}}', realLeadName)
         .replace('{{companyName}}', companyName);
-      
-      const body = template.body
-        .replace('{{customerName}}', dialogLead.name)
+
+      const body = (template.body || "")
+        .replace('{{customerName}}', realLeadName)
         .replace('{{formLink}}', formLink)
         .replace('{{companyName}}', companyName)
-        .replace('{{phone}}', dialogLead.phone)
-        .replace('{{email}}', dialogLead.email);
+        .replace('{{phone}}', realLeadPhone)
+        .replace('{{email}}', realLeadEmail);
 
-      // Simulate send
+      // Simulate send (if you call an actual API here, be sure to pass realLeadEmail)
       await new Promise(resolve => setTimeout(resolve, 1000));
 
-      setLeads(prevLeads => 
-        prevLeads.map(l => 
-          l.id === dialogLead.id 
+      setLeads(prevLeads =>
+        prevLeads.map(l =>
+          l.id === dialogLead.id
             ? { ...l, status: 'contacted', lastContact: new Date().toISOString().split('T')[0] }
             : l
         )
@@ -467,15 +473,15 @@ const LeadManagement = ({ userRole }: LeadManagementProps) => {
 
       toast({
         title: "Email Sent",
-        description: `Email sent to ${dialogLead.name} (${dialogLead.email})`,
+        description: `Email sent to ${realLeadName} (${realLeadEmail})`,
       });
 
-      // Send Discord notification
+      // Send Discord notification (also with correct email/name)
       if ((window as any).sendDiscordNotification) {
         (window as any).sendDiscordNotification(
-          dialogLead.name, 
-          'emailed', 
-          `Sent ${template.name} to ${dialogLead.email}`
+          realLeadName,
+          'emailed',
+          `Sent ${template.name} to ${realLeadEmail}`
         );
       }
 
