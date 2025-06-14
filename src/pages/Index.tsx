@@ -9,12 +9,11 @@ import IntegrationSettings from "@/components/IntegrationSettings";
 import UserManagement from "@/components/UserManagement";
 import KnowledgeBase from "@/components/knowledge-base/KnowledgeBase";
 import UnifiedDialer from "@/components/unified-dialer/UnifiedDialer";
-import DiscordChat from "@/components/discord-chat/DiscordChat";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAMIContext } from "@/contexts/AMIContext";
 import DatabaseManagementCard from "@/components/integration/DatabaseManagementCard";
 import EmailTemplateCard from "@/components/integration/EmailTemplateCard";
-import { FileText, X, MessageCircle } from "lucide-react";
+import { FileText, X, ChevronUp, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const IndexPage = () => {
@@ -23,7 +22,7 @@ const IndexPage = () => {
   const [activeTab, setActiveTab] = useState("leads");
 
   const [showEmailTemplates, setShowEmailTemplates] = useState(false);
-  const [showDiscordChat, setShowDiscordChat] = useState(false);
+  const [showUnifiedDialer, setShowUnifiedDialer] = useState(true);
 
   if (!user) return null;
 
@@ -99,44 +98,45 @@ const IndexPage = () => {
         </Tabs>
       </div>
 
-      {/* Global Unified Dialer - stays at bottom across all tabs */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 bg-background border-t p-4">
-        <UnifiedDialer disabled={false} onCallInitiated={() => {}} />
-      </div>
-
-      {/* Floating Discord Chat Button & Card */}
-      <div>
-        {/* Discord Chat FAB: show only if not open */}
-        {!showDiscordChat && (
-          <button
-            aria-label="Open Discord Chat"
-            className="fixed z-50 bottom-24 left-6 rounded-full shadow-lg bg-white border border-gray-300 hover:shadow-xl flex items-center gap-2 px-4 py-2 text-sm font-medium transition hover:bg-muted"
-            onClick={() => setShowDiscordChat(true)}
-            style={{ boxShadow: "0px 2px 8px 1px rgba(0,0,0,0.10)" }}
+      {/* Global Unified Dialer - collapsible at bottom */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 bg-background border-t">
+        {/* Collapse/Expand Button */}
+        <div className="flex justify-center">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowUnifiedDialer(!showUnifiedDialer)}
+            className="rounded-b-none border-b-0"
           >
-            <MessageCircle className="h-5 w-5 text-purple-600" />
-            Discord Chat
-          </button>
-        )}
-
-        {/* Floating Discord Chat Card */}
-        {showDiscordChat && (
-          <div className="fixed z-50 bottom-28 left-6">
-            <DiscordChat
-              isMinimized={false}
-              onToggleMinimize={() => setShowDiscordChat(false)}
-            />
+            {showUnifiedDialer ? (
+              <>
+                <ChevronDown className="h-4 w-4 mr-1" />
+                Hide Dialer
+              </>
+            ) : (
+              <>
+                <ChevronUp className="h-4 w-4 mr-1" />
+                Show Dialer
+              </>
+            )}
+          </Button>
+        </div>
+        
+        {/* Unified Dialer Content */}
+        {showUnifiedDialer && (
+          <div className="p-4">
+            <UnifiedDialer disabled={false} onCallInitiated={() => {}} />
           </div>
         )}
       </div>
 
-      {/* Floating Email Templates Button & Card */}
+      {/* Floating Email Templates Button & Card - positioned to avoid dialer overlap */}
       <div>
-        {/* Email Templates FAB: show only if not open */}
+        {/* Email Templates FAB: positioned higher to avoid unified dialer */}
         {!showEmailTemplates && (
           <button
             aria-label="Open Email Templates"
-            className="fixed z-50 bottom-24 right-6 rounded-full shadow-lg bg-white border border-gray-300 hover:shadow-xl flex items-center gap-2 px-4 py-2 text-sm font-medium transition hover:bg-muted"
+            className="fixed z-50 bottom-32 right-6 rounded-full shadow-lg bg-white border border-gray-300 hover:shadow-xl flex items-center gap-2 px-4 py-2 text-sm font-medium transition hover:bg-muted"
             onClick={() => setShowEmailTemplates(true)}
             style={{ boxShadow: "0px 2px 8px 1px rgba(0,0,0,0.10)" }}
           >
@@ -148,8 +148,8 @@ const IndexPage = () => {
         {/* Floating Email Templates Card */}
         {showEmailTemplates && (
           <div
-            className="fixed z-50 bottom-28 right-6 w-[90vw] max-w-4xl bg-white border border-gray-300 rounded-lg shadow-2xl flex flex-col"
-            style={{ minHeight: "420px", maxHeight: "80vh" }}
+            className="fixed z-50 bottom-36 right-6 w-[90vw] max-w-4xl bg-white border border-gray-300 rounded-lg shadow-2xl flex flex-col"
+            style={{ minHeight: "420px", maxHeight: "70vh" }}
           >
             <div className="flex items-center justify-between p-3 border-b">
               <div className="flex items-center gap-2 font-semibold text-lg">
