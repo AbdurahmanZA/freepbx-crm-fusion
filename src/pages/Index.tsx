@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import LeadManagement from "@/components/LeadManagement";
@@ -11,6 +12,8 @@ import UnifiedDialer from "@/components/unified-dialer/UnifiedDialer";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAMIContext } from "@/contexts/AMIContext";
 import DatabaseManagementCard from "@/components/integration/DatabaseManagementCard";
+import EmailTemplateCard from "@/components/integration/EmailTemplateCard"; // NEW IMPORT
+import { FileText } from "lucide-react";
 
 const IndexPage = () => {
   const { user } = useAuth();
@@ -29,14 +32,19 @@ const IndexPage = () => {
     }
   }, [user, isConnected, connect]);
 
-  const handleLeadCreated = (leadData: { name: string; phone: string; notes: string }) => {
-    console.log('New lead created from call:', leadData);
+  // Email templates state (mirroring IntegrationSettings for consistency)
+  const [emailTemplates, setEmailTemplates] = useState(() => {
+    const saved = localStorage.getItem('email_templates');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const updateEmailTemplates = (templates: any[]) => {
+    setEmailTemplates(templates);
+    localStorage.setItem('email_templates', JSON.stringify(templates));
   };
 
   return (
     <div className="space-y-8">
-      {/* Removed DatabaseManagementCard from here */}
-
       <div className="mb-8">
         <h1 className="text-3xl font-bold tracking-tight">
           Welcome back, {user.name}
@@ -46,15 +54,21 @@ const IndexPage = () => {
         </p>
       </div>
 
-      <div className="pb-32"> {/* Add padding for fixed dialer */}
+      <div className="pb-32">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className={`grid w-full ${canManageUsers ? 'grid-cols-7' : 'grid-cols-6'}`}>
+          <TabsList className={`grid w-full ${canManageUsers ? 'grid-cols-8' : 'grid-cols-7'}`}>
             <TabsTrigger value="leads">Lead Management</TabsTrigger>
             <TabsTrigger value="calls">Call Center</TabsTrigger>
             <TabsTrigger value="calendar">Callback Calendar</TabsTrigger>
             <TabsTrigger value="reports">Reports</TabsTrigger>
             <TabsTrigger value="integrations">Integrations</TabsTrigger>
             <TabsTrigger value="knowledge">Knowledge Base</TabsTrigger>
+            <TabsTrigger value="email-templates">
+              <span className="flex items-center gap-1">
+                <FileText className="h-4 w-4" />
+                Email Templates
+              </span>
+            </TabsTrigger>
             {canManageUsers && (
               <TabsTrigger value="users">User Management</TabsTrigger>
             )}
@@ -77,13 +91,18 @@ const IndexPage = () => {
           </TabsContent>
 
           <TabsContent value="integrations">
-            {/* Database Management now ONLY appears here */}
             <DatabaseManagementCard userRole={user.role} />
             <IntegrationSettings />
           </TabsContent>
 
           <TabsContent value="knowledge">
             <KnowledgeBase userRole={user.role} />
+          </TabsContent>
+
+          <TabsContent value="email-templates">
+            <div className="max-w-4xl mx-auto">
+              <EmailTemplateCard templates={emailTemplates} onTemplateUpdate={updateEmailTemplates} />
+            </div>
           </TabsContent>
 
           {canManageUsers && (
@@ -93,11 +112,11 @@ const IndexPage = () => {
           )}
         </Tabs>
       </div>
-
       {/* Global Unified Dialer - stays at bottom across all tabs */}
-      <UnifiedDialer onLeadCreated={handleLeadCreated} />
+      <UnifiedDialer disabled={false} onCallInitiated={() => {}} />
     </div>
   );
 };
 
 export default IndexPage;
+
