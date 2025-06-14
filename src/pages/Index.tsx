@@ -7,6 +7,7 @@ import CallbackCalendar from "@/components/callback-calendar/CallbackCalendar";
 import ReportsAnalytics from "@/components/ReportsAnalytics";
 import IntegrationSettings from "@/components/IntegrationSettings";
 import UserManagement from "@/components/UserManagement";
+import KnowledgeBase from "@/components/knowledge-base/KnowledgeBase";
 import UnifiedDialer from "@/components/unified-dialer/UnifiedDialer";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAMIContext } from "@/contexts/AMIContext";
@@ -45,12 +46,13 @@ const Index = () => {
 
       <div className="pb-32"> {/* Add padding for fixed dialer */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className={`grid w-full ${canManageUsers ? 'grid-cols-6' : 'grid-cols-5'}`}>
+          <TabsList className={`grid w-full ${canManageUsers ? 'grid-cols-7' : 'grid-cols-6'}`}>
             <TabsTrigger value="leads">Lead Management</TabsTrigger>
             <TabsTrigger value="calls">Call Center</TabsTrigger>
             <TabsTrigger value="calendar">Callback Calendar</TabsTrigger>
             <TabsTrigger value="reports">Reports</TabsTrigger>
             <TabsTrigger value="integrations">Integrations</TabsTrigger>
+            <TabsTrigger value="knowledge">Knowledge Base</TabsTrigger>
             {canManageUsers && (
               <TabsTrigger value="users">User Management</TabsTrigger>
             )}
@@ -74,6 +76,10 @@ const Index = () => {
 
           <TabsContent value="integrations">
             <IntegrationSettings />
+          </TabsContent>
+
+          <TabsContent value="knowledge">
+            <KnowledgeBase userRole={user.role} />
           </TabsContent>
 
           {canManageUsers && (
