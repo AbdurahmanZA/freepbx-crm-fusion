@@ -272,50 +272,47 @@ const UnifiedDialer = ({ onCallInitiated, disabled }: UnifiedDialerProps) => {
   }, [setPhoneNumber, setContactName, onCall, toast]);
 
   return (
-    <Card className="h-fit">
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-lg">
+    <Card className="h-fit shadow-sm border flex flex-col min-w-[275px] max-w-md mx-auto">
+      <CardHeader className="py-2 px-3">
+        <CardTitle className="flex items-center gap-2 text-base font-semibold">
           <Phone className="h-4 w-4" />
-          Unified Dialer
+          Dialer
           {!isConnected && (
-            <span className="text-xs text-destructive font-normal">
+            <span className="text-xs text-destructive font-normal ml-2">
               (AMI Not Connected)
             </span>
           )}
         </CardTitle>
-        <CardDescription>
-          Make calls directly from the CRM.
+        {/* Optional: condensed description */}
+        <CardDescription className="text-xs leading-tight !mt-1">
+          Make a call from the CRM.
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-1 px-3 py-2 !pt-0">
         {/* Compact agent info */}
-        <div className="bg-muted p-2 rounded text-xs">
-          <div className="flex items-center justify-between">
+        <div className="bg-muted p-1 rounded text-xs flex justify-between items-center mb-1">
+          <span className="flex items-center gap-1">
+            <User className="h-3 w-3" />
+            {user?.name}
+          </span>
+          {user?.extension && (
             <span className="flex items-center gap-1">
-              <User className="h-3 w-3" />
-              {user?.name}
+              <Phone className="h-3 w-3" />
+              PJSIP/{user.extension}
             </span>
-            {user?.extension && (
-              <span className="flex items-center gap-1">
-                <Phone className="h-3 w-3" />
-                PJSIP/{user.extension}
-              </span>
-            )}
-          </div>
-          {!user?.extension && (
-            <p className="text-destructive mt-1">No extension assigned</p>
           )}
         </div>
+        {!user?.extension && (
+          <p className="text-destructive mt-1 text-xs text-center">No extension assigned</p>
+        )}
 
         {/* Active call status */}
         {activeCall && (
-          <div className="bg-blue-50 border border-blue-200 rounded p-2 text-xs">
+          <div className="bg-blue-50 border border-blue-200 rounded p-1 text-xs mb-1">
             <div className="flex items-center justify-between">
-              <span className="font-medium text-blue-900">
-                {activeCall.leadName}
-              </span>
+              <span className="font-medium text-blue-900">{activeCall.leadName}</span>
               <span
-                className={`px-2 py-1 rounded text-xs font-medium ${
+                className={`px-2 py-0.5 rounded text-[11px] font-medium ${
                   activeCall.status === "connected"
                     ? "bg-green-100 text-green-800"
                     : activeCall.status === "ringing"
@@ -328,22 +325,24 @@ const UnifiedDialer = ({ onCallInitiated, disabled }: UnifiedDialerProps) => {
                 {activeCall.status}
               </span>
             </div>
-            <div className="text-blue-700 mt-1">{activeCall.phone}</div>
+            <div className="text-blue-700 mt-0.5">{activeCall.phone}</div>
           </div>
         )}
 
-        <DialerPanel
-          phoneNumber={phoneNumber}
-          setPhoneNumber={setPhoneNumber}
-          contactName={contactName}
-          setContactName={setContactName}
-          userExt={user?.extension}
-          isConnected={isConnected}
-          onCall={onCall}
-        />
+        <div className="pb-1">
+          <DialerPanel
+            phoneNumber={phoneNumber}
+            setPhoneNumber={setPhoneNumber}
+            contactName={contactName}
+            setContactName={setContactName}
+            userExt={user?.extension}
+            isConnected={isConnected}
+            onCall={onCall}
+          />
+        </div>
 
         {!isConnected && (
-          <p className="text-xs text-muted-foreground text-center">
+          <p className="text-xs text-muted-foreground text-center mt-1">
             Connect AMI in Integration Settings
           </p>
         )}
