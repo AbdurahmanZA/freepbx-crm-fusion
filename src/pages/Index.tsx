@@ -71,7 +71,8 @@ const IndexPage = () => {
         </p>
       </div>
 
-      <div className="pb-32">
+      {/* Main content with proper bottom padding to account for fixed dialer */}
+      <div className={`${showUnifiedDialer ? 'pb-80' : 'pb-16'}`}>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className={`grid w-full gap-1 ${canManageUsers ? 'grid-cols-6' : 'grid-cols-5'} p-1`}>
             <TabsTrigger value="leads" className="flex-1 flex items-center gap-2">
@@ -171,4 +172,3 @@ const IndexPage = () => {
 };
 
 export default IndexPage;
-
