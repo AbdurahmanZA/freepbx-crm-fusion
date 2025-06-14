@@ -60,15 +60,15 @@ const IndexPage = () => {
 
       <div className="pb-32">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className={`grid w-full ${canManageUsers ? 'grid-cols-6' : 'grid-cols-5'}`}>
-            <TabsTrigger value="leads">Lead Management</TabsTrigger>
-            <TabsTrigger value="calls">Call Center</TabsTrigger>
-            <TabsTrigger value="calendar">Callback Calendar</TabsTrigger>
-            <TabsTrigger value="reports">Reports</TabsTrigger>
-            <TabsTrigger value="integrations">Integrations</TabsTrigger>
-            <TabsTrigger value="knowledge">Knowledge Base</TabsTrigger>
+          <TabsList className={`grid w-full gap-1 ${canManageUsers ? 'grid-cols-6' : 'grid-cols-5'} p-1`}>
+            <TabsTrigger value="leads" className="flex-1">Lead Management</TabsTrigger>
+            <TabsTrigger value="calls" className="flex-1">Call Center</TabsTrigger>
+            <TabsTrigger value="calendar" className="flex-1">Callback Calendar</TabsTrigger>
+            <TabsTrigger value="reports" className="flex-1">Reports</TabsTrigger>
+            <TabsTrigger value="integrations" className="flex-1">Integrations</TabsTrigger>
+            <TabsTrigger value="knowledge" className="flex-1">Knowledge Base</TabsTrigger>
             {canManageUsers && (
-              <TabsTrigger value="users">User Management</TabsTrigger>
+              <TabsTrigger value="users" className="flex-1">User Management</TabsTrigger>
             )}
           </TabsList>
           <TabsContent value="leads">

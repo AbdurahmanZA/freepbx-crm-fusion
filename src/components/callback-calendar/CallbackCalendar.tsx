@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,12 +10,14 @@ import {
   Phone, 
   Clock,
   User,
-  Building
+  Building,
+  Settings
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import AddCallbackDialog from "./AddCallbackDialog";
 import { callbackService, Callback } from "@/services/callbackService";
+import GoogleCalendarCard from "@/components/integration/GoogleCalendarCard";
 
 interface CallbackCalendarProps {
   userRole: string;
@@ -26,6 +29,18 @@ const CallbackCalendar = ({ userRole }: CallbackCalendarProps) => {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [callbacks, setCallbacks] = useState<Callback[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Google Calendar integration state
+  const [googleCalendarConfig, setGoogleCalendarConfig] = useState(() => {
+    const saved = localStorage.getItem('google_calendar_config');
+    return saved ? JSON.parse(saved) : {
+      enabled: false,
+      syncCallbacks: true,
+      syncMeetings: false,
+      defaultCalendar: 'Primary'
+    };
+  });
+  const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'testing'>('disconnected');
 
   // Load callbacks on component mount
   useEffect(() => {
@@ -124,6 +139,21 @@ const CallbackCalendar = ({ userRole }: CallbackCalendarProps) => {
     });
   };
 
+  const handleGoogleCalendarConfigUpdate = (field: string, value: any) => {
+    const newConfig = { ...googleCalendarConfig, [field]: value };
+    setGoogleCalendarConfig(newConfig);
+    localStorage.setItem('google_calendar_config', JSON.stringify(newConfig));
+  };
+
+  const handleTestGoogleCalendarConnection = async () => {
+    setConnectionStatus('testing');
+    // Simulate API test
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    const success = Math.random() > 0.3; // 70% success rate for demo
+    setConnectionStatus(success ? 'connected' : 'disconnected');
+    return success;
+  };
+
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'high': return 'bg-red-100 text-red-800 border-red-200';
@@ -163,6 +193,14 @@ const CallbackCalendar = ({ userRole }: CallbackCalendarProps) => {
           Schedule Callback
         </Button>
       </div>
+
+      {/* Google Calendar Integration */}
+      <GoogleCalendarCard
+        config={googleCalendarConfig}
+        onConfigUpdate={handleGoogleCalendarConfigUpdate}
+        onTestConnection={handleTestGoogleCalendarConnection}
+        connectionStatus={connectionStatus}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Calendar */}
