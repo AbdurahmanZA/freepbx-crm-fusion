@@ -6,16 +6,26 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { DialerPanel } from "./DialerPanel";
-import { ActiveCallDisplay } from "./ActiveCallDisplay";
-import { CallActivityPanel } from "./CallActivityPanel";
-import { UnifiedDialerEmailPanel } from "./UnifiedDialerEmailPanel";
+import DialerPanel from "./DialerPanel";
+import ActiveCallDisplay from "./ActiveCallDisplay";
+import CallActivityPanel from "./CallActivityPanel";
+import UnifiedDialerEmailPanel from "./UnifiedDialerEmailPanel";
 import { findMatchedLead, buildTemplateVars, Lead } from "./leadUtils";
 import { useToast } from "@/hooks/use-toast";
 import { useAMIContext } from "@/contexts/AMIContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { callRecordsService } from "@/services/callRecordsService";
 import DiscordChat from "@/components/discord-chat/DiscordChat";
+import {
+  Phone,
+  MessageCircle,
+  Activity,
+  Maximize2,
+  Minimize2,
+  Mail,
+  X,
+  Send,
+} from "lucide-react";
 
 interface ActiveCall {
   id: string;
