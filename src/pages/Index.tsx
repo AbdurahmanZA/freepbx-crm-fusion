@@ -150,7 +150,7 @@ const IndexPage = () => {
 
         {/* Expanded Dialer Panel */}
         {showUnifiedDialer && (
-          <div className="bg-background border rounded-lg shadow-xl w-[600px] max-h-[500px] overflow-hidden">
+          <div className="bg-background border rounded-lg shadow-xl w-[400px] max-h-[600px] overflow-hidden">
             {/* Header with close button */}
             <div className="flex items-center justify-between p-3 border-b bg-muted/30">
               <h3 className="font-semibold text-sm">Unified Dialer</h3>
@@ -166,7 +166,7 @@ const IndexPage = () => {
               </Button>
             </div>
             {/* Dialer Content */}
-            <div className="p-3">
+            <div className="p-3 space-y-4">
               <UnifiedDialer disabled={false} onCallInitiated={() => { }} />
             </div>
           </div>
