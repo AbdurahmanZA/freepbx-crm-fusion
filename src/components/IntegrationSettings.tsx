@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,10 +9,14 @@ import IntegrationLogsCard from "./integration/IntegrationLogsCard";
 import SyncSettingsCard from "./integration/SyncSettingsCard";
 import SecuritySettingsCard from "./integration/SecuritySettingsCard";
 import DiscordWebhookCard from "./integration/DiscordWebhookCard";
+import GoogleCalendarCard from "./integration/GoogleCalendarCard";
+import SupabaseConfigCard from "./integration/SupabaseConfigCard";
 
 interface ConnectionStatus {
   amiBridge: 'connected' | 'disconnected' | 'testing';
   database: 'connected' | 'disconnected' | 'testing';
+  googleCalendar: 'connected' | 'disconnected' | 'testing';
+  supabase: 'connected' | 'disconnected' | 'testing';
 }
 
 interface LogEntry {
@@ -46,6 +49,19 @@ interface IntegrationConfig {
     channelName: string;
     enabled: boolean;
   };
+  googleCalendar: {
+    enabled: boolean;
+    syncCallbacks: boolean;
+    syncMeetings: boolean;
+    defaultCalendar: string;
+  };
+  supabase: {
+    url: string;
+    anonKey: string;
+    serviceKey: string;
+    enabled: boolean;
+    googleAuthEnabled: boolean;
+  };
 }
 
 const IntegrationSettings = () => {
@@ -53,7 +69,9 @@ const IntegrationSettings = () => {
   
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>({
     amiBridge: 'disconnected',
-    database: 'disconnected'
+    database: 'disconnected',
+    googleCalendar: 'disconnected',
+    supabase: 'disconnected'
   });
 
   const [integrationLogs, setIntegrationLogs] = useState<LogEntry[]>([
@@ -96,6 +114,19 @@ const IntegrationSettings = () => {
       url: localStorage.getItem('discord_webhook') || '',
       channelName: localStorage.getItem('discord_channel') || '#leads',
       enabled: localStorage.getItem('discord_webhook_enabled') === 'true'
+    },
+    googleCalendar: {
+      enabled: localStorage.getItem('google_calendar_enabled') === 'true',
+      syncCallbacks: localStorage.getItem('google_calendar_sync_callbacks') === 'true',
+      syncMeetings: localStorage.getItem('google_calendar_sync_meetings') === 'true',
+      defaultCalendar: localStorage.getItem('google_calendar_default') || 'Primary'
+    },
+    supabase: {
+      url: localStorage.getItem('supabase_url') || '',
+      anonKey: localStorage.getItem('supabase_anon_key') || '',
+      serviceKey: localStorage.getItem('supabase_service_key') || '',
+      enabled: localStorage.getItem('supabase_enabled') === 'true',
+      googleAuthEnabled: localStorage.getItem('supabase_google_auth') === 'true'
     }
   });
 
@@ -138,6 +169,26 @@ const IntegrationSettings = () => {
       ...prev,
       discord: {
         ...prev.discord,
+        [field]: value
+      }
+    }));
+  };
+
+  const updateGoogleCalendarConfig = (field: string, value: any) => {
+    setConfig(prev => ({
+      ...prev,
+      googleCalendar: {
+        ...prev.googleCalendar,
+        [field]: value
+      }
+    }));
+  };
+
+  const updateSupabaseConfig = (field: string, value: any) => {
+    setConfig(prev => ({
+      ...prev,
+      supabase: {
+        ...prev.supabase,
         [field]: value
       }
     }));
@@ -187,6 +238,52 @@ const IntegrationSettings = () => {
     }
   };
 
+  const testGoogleCalendarConnection = async (): Promise<boolean> => {
+    setConnectionStatus(prev => ({ ...prev, googleCalendar: 'testing' }));
+    addLogEntry('info', 'Testing Google Calendar connection...');
+    
+    try {
+      // Mock test - in real implementation, this would test Google Calendar API
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      if (config.supabase.enabled && config.supabase.googleAuthEnabled) {
+        setConnectionStatus(prev => ({ ...prev, googleCalendar: 'connected' }));
+        addLogEntry('success', 'Google Calendar connection successful');
+        return true;
+      } else {
+        throw new Error('Google authentication not enabled in Supabase');
+      }
+    } catch (error) {
+      setConnectionStatus(prev => ({ ...prev, googleCalendar: 'disconnected' }));
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      addLogEntry('error', 'Google Calendar connection failed', errorMessage);
+      return false;
+    }
+  };
+
+  const testSupabaseConnection = async (): Promise<boolean> => {
+    setConnectionStatus(prev => ({ ...prev, supabase: 'testing' }));
+    addLogEntry('info', `Testing Supabase connection to ${config.supabase.url}`);
+    
+    try {
+      // Mock test - in real implementation, this would test Supabase connection
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      if (config.supabase.url && config.supabase.anonKey) {
+        setConnectionStatus(prev => ({ ...prev, supabase: 'connected' }));
+        addLogEntry('success', 'Supabase connection successful');
+        return true;
+      } else {
+        throw new Error('Missing Supabase URL or anonymous key');
+      }
+    } catch (error) {
+      setConnectionStatus(prev => ({ ...prev, supabase: 'disconnected' }));
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      addLogEntry('error', 'Supabase connection failed', errorMessage);
+      return false;
+    }
+  };
+
   const saveSettings = () => {
     // Save database settings
     Object.entries(config.database).forEach(([key, value]) => {
@@ -211,6 +308,19 @@ const IntegrationSettings = () => {
     localStorage.setItem('discord_webhook', config.discord.url);
     localStorage.setItem('discord_channel', config.discord.channelName);
     localStorage.setItem('discord_webhook_enabled', config.discord.enabled.toString());
+
+    // Save Google Calendar settings
+    localStorage.setItem('google_calendar_enabled', config.googleCalendar.enabled.toString());
+    localStorage.setItem('google_calendar_sync_callbacks', config.googleCalendar.syncCallbacks.toString());
+    localStorage.setItem('google_calendar_sync_meetings', config.googleCalendar.syncMeetings.toString());
+    localStorage.setItem('google_calendar_default', config.googleCalendar.defaultCalendar);
+
+    // Save Supabase settings
+    localStorage.setItem('supabase_url', config.supabase.url);
+    localStorage.setItem('supabase_anon_key', config.supabase.anonKey);
+    localStorage.setItem('supabase_service_key', config.supabase.serviceKey);
+    localStorage.setItem('supabase_enabled', config.supabase.enabled.toString());
+    localStorage.setItem('supabase_google_auth', config.supabase.googleAuthEnabled.toString());
 
     toast({
       title: "Settings Saved",
@@ -270,6 +380,20 @@ const IntegrationSettings = () => {
               connectionStatus={connectionStatus.database}
               onConfigUpdate={updateDatabaseConfig}
               onTestConnection={testDatabaseConnection}
+            />
+
+            <SupabaseConfigCard 
+              config={config.supabase}
+              connectionStatus={connectionStatus.supabase}
+              onConfigUpdate={updateSupabaseConfig}
+              onTestConnection={testSupabaseConnection}
+            />
+
+            <GoogleCalendarCard 
+              config={config.googleCalendar}
+              connectionStatus={connectionStatus.googleCalendar}
+              onConfigUpdate={updateGoogleCalendarConfig}
+              onTestConnection={testGoogleCalendarConnection}
             />
           </div>
 
