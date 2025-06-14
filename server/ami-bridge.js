@@ -86,6 +86,7 @@ class AMIBridge extends EventEmitter {
       });
 
       console.log('[AMI Bridge] Sending action:', action.Action, 'ID:', actionId);
+      console.log('[AMI Bridge] Full message:', message.replace(/\r\n/g, '\\r\\n'));
       this.socket.write(message);
 
       // Timeout after 15 seconds for PJSIP queries, 10 seconds for others
@@ -93,7 +94,7 @@ class AMIBridge extends EventEmitter {
       setTimeout(() => {
         if (this.pendingActions.has(actionId.toString())) {
           this.pendingActions.delete(actionId.toString());
-          reject(new Error('Action timeout'));
+          reject(new Error(`Action timeout for ${action.Action}`));
         }
       }, timeout);
     });
@@ -131,7 +132,7 @@ class AMIBridge extends EventEmitter {
   }
 
   handleMessage(message) {
-    console.log('[AMI Bridge] Received message type:', message.Event || message.Response || 'Unknown');
+    console.log('[AMI Bridge] Received message:', JSON.stringify(message, null, 2));
 
     // Handle action responses first
     if (message.ActionID && this.pendingActions.has(message.ActionID)) {
@@ -139,11 +140,11 @@ class AMIBridge extends EventEmitter {
       
       // For PJSIP endpoints, we need to handle the response differently
       if (message.Response === 'Success' && pending.action === 'PJSIPShowEndpoints') {
-        // Don't resolve immediately, wait for EndpointList events
         console.log('[AMI Bridge] PJSIP query accepted, waiting for endpoint data...');
         return;
       }
       
+      console.log(`[AMI Bridge] Resolving action ${pending.action} with response:`, message);
       this.pendingActions.delete(message.ActionID);
       pending.resolve(message);
       return;
@@ -162,28 +163,39 @@ class AMIBridge extends EventEmitter {
 
     // Emit regular events for real-time updates
     if (message.Event) {
+      console.log(`[AMI Bridge] Emitting event: ${message.Event}`);
       this.emit('event', message);
     }
   }
 
   async originateCall(channel, extension, context = 'from-internal', callerID = null) {
+    // Enhanced originate action with proper FreePBX formatting
     const originateAction = {
       Action: 'Originate',
       Channel: channel,
-      Exten: extension,
       Context: context,
+      Exten: extension,
       Priority: '1',
       Timeout: '30000',
       CallerID: callerID || `CRM Call <${extension}>`,
-      Async: 'true'
+      Async: 'true',
+      Variable: `ORIGINATE_TIME=${Date.now()}`
     };
 
     try {
+      console.log('[AMI Bridge] Originating call with action:', originateAction);
       const response = await this.sendAction(originateAction);
       console.log('[AMI Bridge] Originate response:', response);
-      return response.Response === 'Success';
+      
+      if (response.Response === 'Success') {
+        console.log('[AMI Bridge] ✅ Call origination accepted by Asterisk');
+        return true;
+      } else {
+        console.error('[AMI Bridge] ❌ Call origination failed:', response.Message || 'Unknown error');
+        return false;
+      }
     } catch (error) {
-      console.error('[AMI Bridge] Originate error:', error);
+      console.error('[AMI Bridge] ❌ Originate error:', error);
       return false;
     }
   }

@@ -237,16 +237,23 @@ const UnifiedDialer = ({ onLeadCreated }: UnifiedDialerProps) => {
     }
 
     try {
-      console.log('📞 [UnifiedDialer] Initiating call via AMI:', {
-        channel: `PJSIP/${user.extension}`,
+      // Use exact PJSIP format confirmed from your FreePBX output
+      const channelFormat = `PJSIP/${user.extension}`;
+      const dialContext = 'from-internal';
+      
+      console.log('📞 [UnifiedDialer] Initiating call with verified format:', {
+        channel: channelFormat,
         extension: phone,
-        context: 'from-internal'
+        context: dialContext,
+        userExtension: user.extension,
+        targetPhone: phone,
+        contactName: name
       });
 
       const success = await originateCall(
-        `PJSIP/${user.extension}`,
+        channelFormat,
         phone,
-        'from-internal'
+        dialContext
       );
 
       if (success) {
@@ -261,14 +268,14 @@ const UnifiedDialer = ({ onLeadCreated }: UnifiedDialerProps) => {
           leadId: leadId
         };
 
-        console.log('📞 [UnifiedDialer] Call initiated, starting timer');
+        console.log('📞 [UnifiedDialer] ✅ Call initiated successfully, starting timer');
         setActiveCall(newCall);
         setCallStartTime(startTime);
         setIsMinimized(false);
         
         toast({
           title: "Call Initiated",
-          description: `Calling ${newCall.leadName} from extension ${user.extension}`,
+          description: `Calling ${newCall.leadName} from PJSIP/${user.extension}`,
         });
 
         // Create lead for ALL manual calls (when no leadId is provided)
@@ -276,13 +283,13 @@ const UnifiedDialer = ({ onLeadCreated }: UnifiedDialerProps) => {
           createLeadFromManualCall(phone, name || 'Unknown Contact');
         }
       } else {
-        throw new Error('Failed to originate call');
+        throw new Error('AMI originate call was rejected by Asterisk');
       }
     } catch (error) {
-      console.error('Call origination error:', error);
+      console.error('❌ [UnifiedDialer] Call origination error:', error);
       toast({
         title: "Call Failed",
-        description: "Could not initiate call. Check AMI connection.",
+        description: `Could not initiate call: ${error.message || 'Unknown error'}`,
         variant: "destructive"
       });
     }
