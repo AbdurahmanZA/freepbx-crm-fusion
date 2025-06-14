@@ -84,7 +84,7 @@ const KnowledgeBase = ({ userRole }: KnowledgeBaseProps) => {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Book className="h-5 w-5" />
+                  <Book className="h-5 w-5 text-blue-600" />
                   Getting Started
                 </CardTitle>
                 <CardDescription>
@@ -108,7 +108,7 @@ const KnowledgeBase = ({ userRole }: KnowledgeBaseProps) => {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Download className="h-5 w-5" />
+                  <Download className="h-5 w-5 text-green-600" />
                   Download Full Guide
                 </CardTitle>
                 <CardDescription>
@@ -125,7 +125,10 @@ const KnowledgeBase = ({ userRole }: KnowledgeBaseProps) => {
 
             <Card>
               <CardHeader>
-                <CardTitle>Quick Stats</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <BarChart className="h-5 w-5 text-purple-600" />
+                  Quick Stats
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
@@ -148,7 +151,10 @@ const KnowledgeBase = ({ userRole }: KnowledgeBaseProps) => {
 
           <Card className="mt-6">
             <CardHeader>
-              <CardTitle>Module Overview</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <Settings className="h-5 w-5 text-gray-600" />
+                Module Overview
+              </CardTitle>
               <CardDescription>
                 Quick access to all available modules and their purposes
               </CardDescription>
@@ -157,16 +163,28 @@ const KnowledgeBase = ({ userRole }: KnowledgeBaseProps) => {
               <div className="grid gap-4 md:grid-cols-2">
                 {filteredModules.map((module) => {
                   const Icon = moduleIcons[module.id as keyof typeof moduleIcons] || Book;
+                  const iconColors = {
+                    leads: "text-blue-600",
+                    calls: "text-green-600", 
+                    calendar: "text-purple-600",
+                    reports: "text-orange-600",
+                    integrations: "text-gray-600",
+                    users: "text-red-600"
+                  };
+                  const iconColor = iconColors[module.id as keyof typeof iconColors] || "text-primary";
+                  
                   return (
                     <div 
                       key={module.id} 
-                      className="flex items-start gap-3 p-3 rounded-lg border cursor-pointer hover:bg-muted/50 transition-colors"
+                      className="flex items-start gap-3 p-4 rounded-lg border cursor-pointer hover:bg-muted/50 hover:shadow-md transition-all duration-200"
                       onClick={() => setSelectedModule(module.id)}
                     >
-                      <Icon className="h-5 w-5 mt-0.5 text-primary" />
-                      <div>
-                        <h4 className="font-medium">{module.title}</h4>
-                        <p className="text-sm text-muted-foreground">{module.description}</p>
+                      <div className="p-2 rounded-lg bg-muted/50">
+                        <Icon className={`h-5 w-5 ${iconColor}`} />
+                      </div>
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-base mb-1">{module.title}</h4>
+                        <p className="text-sm text-muted-foreground leading-relaxed">{module.description}</p>
                       </div>
                     </div>
                   );
