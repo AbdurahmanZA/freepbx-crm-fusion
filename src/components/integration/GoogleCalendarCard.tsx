@@ -68,7 +68,7 @@ const GoogleCalendarCard = ({
     authUrl.searchParams.set("client_id", config.clientId);
     authUrl.searchParams.set("redirect_uri", redirectUri);
     authUrl.searchParams.set("response_type", "token");
-    authUrl.search_params.set("scope", "https://www.googleapis.com/auth/calendar");
+    authUrl.searchParams.set("scope", "https://www.googleapis.com/auth/calendar");
     authUrl.searchParams.set("include_granted_scopes", "true");
     authUrl.searchParams.set("prompt", "consent select_account");
     
