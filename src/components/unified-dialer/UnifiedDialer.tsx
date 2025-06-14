@@ -278,33 +278,84 @@ const UnifiedDialer = ({ onCallInitiated, disabled }: UnifiedDialerProps) => {
 
   return (
     <Card className="h-fit shadow-sm border flex flex-col w-full">
-      <UnifiedDialerHeader isConnected={isConnected} />
+      <CardHeader className="pb-2 px-3 pt-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Phone className="h-4 w-4 text-primary" />
+            <CardTitle className="text-sm font-medium">Unified Dialer</CardTitle>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
+            <span className="text-xs text-muted-foreground">
+              {isConnected ? 'Connected' : 'Offline'}
+            </span>
+          </div>
+        </div>
+      </CardHeader>
 
-      <CardContent className="space-y-3 px-4 py-3 !pt-0">
-        <UnifiedDialerAgentInfo user={user} />
+      <CardContent className="space-y-2 px-3 py-2 !pt-0">
+        {/* Agent Info - Compact */}
+        <div className="flex items-center gap-2 text-xs">
+          <User className="h-3 w-3 text-muted-foreground" />
+          <span className="font-medium">{user?.name}</span>
+          {user?.extension && (
+            <span className="text-muted-foreground">Ext: {user.extension}</span>
+          )}
+        </div>
+        
         {!user?.extension && (
-          <p className="text-destructive mt-1 text-xs text-center">
-            No extension assigned
-          </p>
+          <p className="text-destructive text-xs">No extension assigned</p>
         )}
 
-        {/* Active call status */}
+        {/* Active call status - Compact */}
         {activeCall && (
-          <UnifiedDialerActiveCall activeCall={activeCall} />
+          <div className="p-2 bg-green-50 border border-green-200 rounded">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center">
+                  <User className="h-3 w-3 text-green-600" />
+                </div>
+                <div>
+                  <div className="text-sm font-medium">{activeCall.leadName}</div>
+                  <div className="text-xs text-gray-600">{activeCall.phone}</div>
+                </div>
+              </div>
+              <div className="text-xs font-mono font-bold text-green-700">
+                {activeCall.status === 'ringing' ? 'Ringing' :
+                 activeCall.status === 'on-hold' ? 'On Hold' : 'Connected'}
+              </div>
+            </div>
+          </div>
         )}
 
-        <UnifiedDialerPanelWrapper
-          phoneNumber={phoneNumber}
-          setPhoneNumber={setPhoneNumber}
-          contactName={contactName}
-          setContactName={setContactName}
-          userExt={user?.extension}
-          isConnected={isConnected}
-          onCall={onCall}
-        />
+        {/* Dialer Panel - Compact */}
+        <div className="grid grid-cols-2 gap-2">
+          <Input
+            value={phoneNumber}
+            onChange={e => setPhoneNumber(e.target.value)}
+            placeholder="Phone number"
+            className="text-sm h-8"
+          />
+          <Input
+            value={contactName}
+            onChange={e => setContactName(e.target.value)}
+            placeholder="Contact name"
+            className="text-sm h-8"
+          />
+        </div>
+
+        <Button
+          onClick={onCall}
+          disabled={!user?.extension || !phoneNumber || !isConnected}
+          className="w-full h-8 text-sm"
+          size="sm"
+        >
+          <PhoneCall className="h-3 w-3 mr-2" />
+          {!isConnected ? 'AMI Not Connected' : !user?.extension ? 'No Extension' : 'Call'}
+        </Button>
 
         {!isConnected && (
-          <p className="text-xs text-muted-foreground text-center mt-2">
+          <p className="text-xs text-muted-foreground text-center">
             Connect AMI in Integration Settings
           </p>
         )}
