@@ -21,10 +21,22 @@ import {
   BookText,
   Users,
   Mail,
-  Clock
+  Clock,
+  ChevronUp,
+  ChevronDown
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from "@/components/ui/drawer";
 
 const IndexPage = () => {
   const { user } = useAuth();
@@ -77,7 +89,7 @@ const IndexPage = () => {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 pb-20">
       <div className="mb-8">
         <h1 className="text-3xl font-bold tracking-tight">
           Welcome back, {user.name}
@@ -149,59 +161,58 @@ const IndexPage = () => {
         )}
       </Tabs>
 
-      {/* Floating Unified Dialer - collapsible button window */}
-      <div className="fixed bottom-4 right-4 z-50">
-        {/* Floating Toggle Button */}
-        {!showUnifiedDialer && (
-          <Button
-            onClick={() => setShowUnifiedDialer(true)}
-            className="rounded-full w-14 h-14 shadow-lg"
-            size="icon"
-          >
-            <svg className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-            </svg>
-          </Button>
-        )}
-
-        {/* Expanded Dialer Panel */}
-        {showUnifiedDialer && (
-          <div className="bg-background border rounded-lg shadow-xl w-[600px] max-h-[700px] overflow-y-auto">
-            {/* Header with close button */}
-            <div className="flex items-center justify-between p-3 border-b bg-muted/30 sticky top-0 z-10">
-              <h3 className="font-semibold text-sm">Unified Dialer</h3>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowUnifiedDialer(false)}
-                className="h-6 w-6 p-0"
-              >
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </Button>
-            </div>
-            {/* Content */}
-            <div className="p-4 space-y-4">
-              {/* Dialer on top */}
-              <UnifiedDialer disabled={false} onCallInitiated={() => {}} />
-              
-              {/* Recent Calls below */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Clock className="h-4 w-4" />
-                    Recent Calls
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <CallHistory calls={callRecords.slice(0, 8)} />
-                </CardContent>
-              </Card>
+      {/* Bottom Drawer Dialer */}
+      <Drawer>
+        <DrawerTrigger asChild>
+          <div className="fixed bottom-0 left-0 right-0 z-50">
+            <div className="bg-primary text-primary-foreground px-4 py-3 flex items-center justify-between shadow-lg border-t">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-primary-foreground/20 rounded-full flex items-center justify-center">
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-sm">Unified Dialer</h3>
+                  <p className="text-xs opacity-80">Tap to open dialer & call history</p>
+                </div>
+              </div>
+              <ChevronUp className="h-5 w-5" />
             </div>
           </div>
-        )}
-      </div>
+        </DrawerTrigger>
+        <DrawerContent className="max-h-[85vh]">
+          <DrawerHeader>
+            <DrawerTitle className="flex items-center gap-2">
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+              </svg>
+              Unified Dialer
+            </DrawerTitle>
+            <DrawerDescription>
+              Make calls and view recent call history
+            </DrawerDescription>
+          </DrawerHeader>
+          
+          <div className="px-4 space-y-6 overflow-y-auto">
+            {/* Dialer */}
+            <UnifiedDialer disabled={false} onCallInitiated={() => {}} />
+            
+            {/* Recent Calls */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Clock className="h-4 w-4" />
+                  Recent Calls
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <CallHistory calls={callRecords.slice(0, 10)} />
+              </CardContent>
+            </Card>
+          </div>
+        </DrawerContent>
+      </Drawer>
     </div>
   );
 };
