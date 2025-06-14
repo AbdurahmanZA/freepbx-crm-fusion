@@ -59,7 +59,7 @@ const IndexPage = () => {
 
       <div className="pb-32">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className={`grid w-full ${canManageUsers ? 'grid-cols-7' : 'grid-cols-6'}`}>
+          <TabsList className={`grid w-full ${canManageUsers ? 'grid-cols-6' : 'grid-cols-5'}`}>
             <TabsTrigger value="leads">Lead Management</TabsTrigger>
             <TabsTrigger value="calls">Call Center</TabsTrigger>
             <TabsTrigger value="calendar">Callback Calendar</TabsTrigger>
@@ -141,4 +141,3 @@ const IndexPage = () => {
 };
 
 export default IndexPage;
-
