@@ -169,26 +169,38 @@ class AMIBridge extends EventEmitter {
   }
 
   async originateCall(channel, extension, context = 'from-internal', callerID = null) {
+    // Smart context detection based on destination
+    let targetContext = context;
+    
+    // Check if destination looks like an internal extension (3-4 digits)
+    if (/^\d{3,4}$/.test(extension)) {
+      console.log(`[AMI Bridge] Detected internal extension: ${extension}, using ext-local context`);
+      targetContext = 'ext-local';
+    } else {
+      console.log(`[AMI Bridge] Detected external number: ${extension}, using from-internal context`);
+      targetContext = 'from-internal';
+    }
+
     // Enhanced originate action with proper FreePBX formatting
     const originateAction = {
       Action: 'Originate',
       Channel: channel,
-      Context: context,
+      Context: targetContext,
       Exten: extension,
       Priority: '1',
       Timeout: '30000',
       CallerID: callerID || `CRM Call <${extension}>`,
       Async: 'true',
-      Variable: `ORIGINATE_TIME=${Date.now()}`
+      Variable: `ORIGINATE_TIME=${Date.now()},CRM_CALL=true`
     };
 
     try {
-      console.log('[AMI Bridge] Originating call with action:', originateAction);
+      console.log('[AMI Bridge] Originating call with enhanced action:', originateAction);
       const response = await this.sendAction(originateAction);
       console.log('[AMI Bridge] Originate response:', response);
       
       if (response.Response === 'Success') {
-        console.log('[AMI Bridge] ✅ Call origination accepted by Asterisk');
+        console.log(`[AMI Bridge] ✅ Call origination accepted: ${channel} -> ${extension}@${targetContext}`);
         return true;
       } else {
         console.error('[AMI Bridge] ❌ Call origination failed:', response.Message || 'Unknown error');
