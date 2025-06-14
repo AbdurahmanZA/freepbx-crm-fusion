@@ -10,7 +10,8 @@ import {
   Edit,
   Trash2,
   Shield,
-  Lock
+  Lock,
+  Globe // Added Globe icon for webmail
 } from "lucide-react";
 
 interface UserCardProps {
@@ -23,8 +24,9 @@ interface UserCardProps {
     status: string;
     lastActive: string;
     permissions: string[];
+    webmailUrl?: string; // Added webmailUrl
   };
-  onEdit: (user: any) => void;
+  onEdit: (user: UserCardProps['user']) => void;
   onDelete: (userId: number) => void;
   onResetPassword: (userId: number) => void;
 }
@@ -45,6 +47,12 @@ const UserCard = ({ user, onEdit, onDelete, onResetPassword }: UserCardProps) =>
 
   const getStatusColor = (status: string) => {
     return status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
+  };
+
+  const handleOpenWebmail = () => {
+    if (user.webmailUrl) {
+      window.open(user.webmailUrl, '_blank', 'noopener,noreferrer');
+    }
   };
 
   return (
@@ -83,13 +91,18 @@ const UserCard = ({ user, onEdit, onDelete, onResetPassword }: UserCardProps) =>
             </div>
           </div>
           <div className="flex gap-1">
-            <Button size="sm" variant="outline" onClick={() => onEdit(user)}>
+            {user.webmailUrl && (
+              <Button size="sm" variant="outline" onClick={handleOpenWebmail} title="Open Webmail">
+                <Globe className="h-3 w-3" />
+              </Button>
+            )}
+            <Button size="sm" variant="outline" onClick={() => onEdit(user)} title="Edit User">
               <Edit className="h-3 w-3" />
             </Button>
-            <Button size="sm" variant="outline" onClick={() => onResetPassword(user.id)}>
+            <Button size="sm" variant="outline" onClick={() => onResetPassword(user.id)} title="Reset Password">
               <Lock className="h-3 w-3" />
             </Button>
-            <Button size="sm" variant="outline" className="text-destructive" onClick={() => onDelete(user.id)}>
+            <Button size="sm" variant="outline" className="text-destructive" onClick={() => onDelete(user.id)} title="Delete User">
               <Trash2 className="h-3 w-3" />
             </Button>
           </div>
@@ -100,3 +113,4 @@ const UserCard = ({ user, onEdit, onDelete, onResetPassword }: UserCardProps) =>
 };
 
 export default UserCard;
+

@@ -1,4 +1,3 @@
-
 export interface User {
   id: number;
   name: string;
@@ -10,6 +9,7 @@ export interface User {
   permissions: string[];
   createdAt: string;
   updatedAt: string;
+  webmailUrl?: string;
 }
 
 export interface CreateUserData {
@@ -19,10 +19,12 @@ export interface CreateUserData {
   extension: string;
   password: string;
   permissions: string[];
+  webmailUrl?: string;
 }
 
 export interface UpdateUserData extends Partial<CreateUserData> {
   status?: 'active' | 'inactive';
+  webmailUrl?: string;
 }
 
 class UserService {
@@ -37,7 +39,8 @@ class UserService {
       lastActive: "Today",
       permissions: ["manage_users", "system_admin", "view_reports"],
       createdAt: "2024-01-01",
-      updatedAt: "2024-01-01"
+      updatedAt: "2024-01-01",
+      webmailUrl: "https://webmail.company.com/admin"
     },
     {
       id: 2,
@@ -49,7 +52,8 @@ class UserService {
       lastActive: "2 hours ago",
       permissions: ["view_reports", "edit_leads", "make_calls"],
       createdAt: "2024-01-02",
-      updatedAt: "2024-01-02"
+      updatedAt: "2024-01-02",
+      webmailUrl: "https://webmail.company.com/john"
     },
     {
       id: 3,
@@ -73,7 +77,8 @@ class UserService {
       lastActive: "Yesterday",
       permissions: ["view_leads", "make_calls"],
       createdAt: "2024-01-04",
-      updatedAt: "2024-01-04"
+      updatedAt: "2024-01-04",
+      webmailUrl: "https://cpanel19.mywebserver.co.za:2096/"
     }
   ];
 
@@ -90,8 +95,12 @@ class UserService {
   async createUser(userData: CreateUserData): Promise<User> {
     const newUser: User = {
       id: this.nextId++,
-      ...userData,
+      name: userData.name,
+      email: userData.email,
       role: userData.role.charAt(0).toUpperCase() + userData.role.slice(1),
+      extension: userData.extension,
+      permissions: userData.permissions,
+      webmailUrl: userData.webmailUrl,
       status: 'active',
       lastActive: 'Just created',
       createdAt: new Date().toISOString().split('T')[0],
@@ -110,6 +119,7 @@ class UserService {
       ...this.users[userIndex],
       ...userData,
       role: userData.role ? userData.role.charAt(0).toUpperCase() + userData.role.slice(1) : this.users[userIndex].role,
+      webmailUrl: userData.webmailUrl !== undefined ? userData.webmailUrl : this.users[userIndex].webmailUrl,
       updatedAt: new Date().toISOString().split('T')[0]
     };
 

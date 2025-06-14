@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -52,8 +51,11 @@ const UserManagement = () => {
   };
 
   const filteredUsers = users.filter(user => {
-    const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user.email.toLowerCase().includes(searchTerm.toLowerCase());
+    const nameMatch = user.name.toLowerCase().includes(searchTerm.toLowerCase());
+    const emailMatch = user.email.toLowerCase().includes(searchTerm.toLowerCase());
+    const webmailMatch = user.webmailUrl?.toLowerCase().includes(searchTerm.toLowerCase()) || false; // Also search by webmailUrl
+
+    const matchesSearch = nameMatch || emailMatch || webmailMatch;
     const matchesRole = roleFilter === "all" || user.role.toLowerCase() === roleFilter;
     const matchesStatus = statusFilter === "all" || user.status === statusFilter;
     
@@ -61,6 +63,7 @@ const UserManagement = () => {
   });
 
   const handleAddUser = async (userData: CreateUserData) => {
+    // userData from AddUserForm now includes webmailUrl
     try {
       await userService.createUser(userData);
       await loadUsers();
@@ -84,11 +87,13 @@ const UserManagement = () => {
     setShowAddForm(true);
   };
 
-  const handleUpdateUser = async (userData: CreateUserData) => {
+  const handleUpdateUser = async (userData: CreateUserData) => { // AddUserForm passes CreateUserData
     if (!editingUser) return;
     
+    // userData from AddUserForm now includes webmailUrl
+    // The userService.updateUser expects UpdateUserData, which is compatible
     try {
-      await userService.updateUser(editingUser.id, userData);
+      await userService.updateUser(editingUser.id, userData); 
       await loadUsers();
       toast({
         title: "Success",
@@ -146,9 +151,9 @@ const UserManagement = () => {
 
   const exportUsers = () => {
     const csvContent = [
-      ['Name', 'Email', 'Role', 'Extension', 'Status', 'Last Active'].join(','),
+      ['Name', 'Email', 'Role', 'Extension', 'Status', 'Last Active', 'Webmail URL'].join(','), // Added Webmail URL to export
       ...filteredUsers.map(user => 
-        [user.name, user.email, user.role, user.extension, user.status, user.lastActive].join(',')
+        [user.name, user.email, user.role, user.extension, user.status, user.lastActive, user.webmailUrl || ''].join(',')
       )
     ].join('\n');
 
@@ -253,12 +258,12 @@ const UserManagement = () => {
                   user={user}
                   onEdit={handleEditUser}
                   onDelete={(userId) => {
-                    const user = users.find(u => u.id === userId);
-                    if (user) setDeleteDialog({ isOpen: true, user });
+                    const userToDelete = users.find(u => u.id === userId);
+                    if (userToDelete) setDeleteDialog({ isOpen: true, user: userToDelete });
                   }}
                   onResetPassword={(userId) => {
-                    const user = users.find(u => u.id === userId);
-                    if (user) setPasswordDialog({ isOpen: true, user });
+                    const userToReset = users.find(u => u.id === userId);
+                    if (userToReset) setPasswordDialog({ isOpen: true, user: userToReset });
                   }}
                 />
               ))
@@ -269,14 +274,14 @@ const UserManagement = () => {
 
       <DeleteUserDialog
         isOpen={deleteDialog.isOpen}
-        onOpenChange={(open) => setDeleteDialog({ isOpen: open, user: null })}
+        onOpenChange={(open) => setDeleteDialog({ isOpen: open, user: deleteDialog.user && !open ? null : deleteDialog.user })}
         onConfirm={handleDeleteUser}
         userName={deleteDialog.user?.name || ""}
       />
 
       <PasswordResetDialog
         isOpen={passwordDialog.isOpen}
-        onOpenChange={(open) => setPasswordDialog({ isOpen: open, user: null })}
+        onOpenChange={(open) => setPasswordDialog({ isOpen: open, user: passwordDialog.user && !open ? null : passwordDialog.user })}
         onConfirm={handleResetPassword}
         userName={passwordDialog.user?.name || ""}
       />
