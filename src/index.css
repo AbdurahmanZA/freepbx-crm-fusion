@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -123,34 +124,51 @@
   }
 }
 
-/* Additional color themes */
+/* Fixed color themes with proper contrast */
 [data-theme="jericho"] {
-  --primary: 200 32% 26%;
-  --accent: 28 75% 56%;
-  --background: 0 0% 100%;
-  --foreground: 200 25% 25%;
-  --card: 0 0% 100%;
+  --primary: 200 32% 26%;        /* #2D5563 - Dark blue */
+  --primary-foreground: 0 0% 98%; /* White text */
+  --accent: 28 75% 56%;          /* #E69A3A - Orange */
+  --accent-foreground: 0 0% 100%; /* White text */
+  --background: 0 0% 100%;       /* White */
+  --foreground: 200 25% 25%;     /* Dark text */
+  --card: 0 0% 100%;             /* White cards */
+  --card-foreground: 200 25% 25%; /* Dark text on cards */
+  --muted-foreground: 200 10% 45%; /* Medium gray for muted text */
 }
 
 [data-theme="indigo"] {
-  --primary: 220 24% 30%;      /* #364f6b */
-  --accent: 184 61% 51%;       /* #3fc1c9 */
-  --background: 210 33% 98%;   /* #f5f7fa */
-  --foreground: 210 22% 20%;
-  --card: 0 0% 100%;
+  --primary: 220 24% 30%;        /* #364f6b - Dark indigo */
+  --primary-foreground: 0 0% 98%; /* White text */
+  --accent: 184 61% 51%;         /* #3fc1c9 - Teal */
+  --accent-foreground: 0 0% 100%; /* White text */
+  --background: 210 33% 98%;     /* #f5f7fa - Light blue-gray */
+  --foreground: 210 22% 20%;     /* Dark blue-gray text */
+  --card: 0 0% 100%;             /* White cards */
+  --card-foreground: 210 22% 20%; /* Dark text on cards */
+  --muted-foreground: 210 15% 40%; /* Medium blue-gray for muted text */
 }
+
 [data-theme="emerald"] {
-  --primary: 160 84% 27%;      /* #059669 */
-  --accent: 222 27% 23%;       /* #374151 */
-  --background: 210 40% 96%;   /* #f3f4f6 */
-  --foreground: 222 27% 23%;
-  --card: 0 0% 100%;
+  --primary: 160 84% 27%;        /* #059669 - Dark emerald */
+  --primary-foreground: 0 0% 98%; /* White text */
+  --accent: 222 27% 23%;         /* #374151 - Dark gray */
+  --accent-foreground: 0 0% 98%; /* White text */
+  --background: 210 40% 96%;     /* #f3f4f6 - Light gray */
+  --foreground: 222 27% 15%;     /* Very dark gray text */
+  --card: 0 0% 100%;             /* White cards */
+  --card-foreground: 222 27% 15%; /* Dark text on cards */
+  --muted-foreground: 222 15% 35%; /* Medium gray for muted text */
 }
+
 [data-theme="minimal"] {
-  --primary: 230 33% 97%;      /* #F8FAFC */
-  --accent: 213 27% 94%;       /* #e5e7eb */
-  --background: 0 0% 100%;
-  --foreground: 222 45% 10%;   /* #222 */
-  --card: 0 0% 100%;
+  --primary: 220 13% 18%;        /* #1f2937 - Dark gray instead of light */
+  --primary-foreground: 0 0% 98%; /* White text */
+  --accent: 213 27% 84%;         /* #d1d5db - Light gray */
+  --accent-foreground: 222 45% 10%; /* Dark text */
+  --background: 0 0% 100%;       /* White */
+  --foreground: 222 45% 10%;     /* #111827 - Very dark text */
+  --card: 0 0% 100%;             /* White cards */
+  --card-foreground: 222 45% 10%; /* Dark text on cards */
+  --muted-foreground: 222 20% 40%; /* Medium gray for muted text */
 }
-/* fallback: if no theme-style, default to jericho which mimics the original colors */
