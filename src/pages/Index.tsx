@@ -61,18 +61,18 @@ const IndexPage = () => {
   };
 
   return (
-    <div className="space-y-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight">
-          Welcome back, {user.name}
-        </h1>
-        <p className="text-muted-foreground">
-          Manage your leads, calls, and team performance from your dashboard.
-        </p>
-      </div>
+    <div className="min-h-screen bg-background">
+      {/* Main content container with padding for fixed dialer */}
+      <div className="container mx-auto p-6 space-y-8" style={{ paddingBottom: showUnifiedDialer ? '320px' : '80px' }}>
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold tracking-tight">
+            Welcome back, {user.name}
+          </h1>
+          <p className="text-muted-foreground">
+            Manage your leads, calls, and team performance from your dashboard.
+          </p>
+        </div>
 
-      {/* Main content with proper bottom padding to account for fixed dialer */}
-      <div className={`${showUnifiedDialer ? 'pb-80' : 'pb-16'}`}>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className={`grid w-full gap-1 ${canManageUsers ? 'grid-cols-6' : 'grid-cols-5'} p-1`}>
             <TabsTrigger value="leads" className="flex-1 flex items-center gap-2">
