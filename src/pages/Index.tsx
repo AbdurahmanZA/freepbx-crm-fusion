@@ -110,13 +110,47 @@ const IndexPage = () => {
     return () => window.removeEventListener('unifiedDialerCall', handleDialerRequest as EventListener);
   }, [toast]);
 
-  const handleCallUpdate = (callData: CallRecord) => {
+  const handleCallUpdate = (callData: {
+    id: string; // from dialer
+    leadName: string;
+    phone: string;
+    duration: string;
+    status: "connected" | "ringing" | "on-hold" | "ended";
+    startTime: Date;
+    leadId?: string;
+  }) => {
     const records = callRecordsService.getRecords();
-    const existing = records.find(r => r.id === callData.id);
-    if (existing) {
-      callRecordsService.updateRecord(callData.id, callData);
+    const existingRecord = records.find(r => r.dialerCallId === callData.id);
+
+    const outcomeMap = {
+      ringing: "Ringing",
+      connected: "Answered",
+      "on-hold": "On Hold",
+      ended: "Ended",
+    };
+
+    if (existingRecord) {
+      // Update existing record
+      callRecordsService.updateRecord(existingRecord.id, {
+        duration: callData.duration,
+        outcome: outcomeMap[callData.status],
+      });
     } else {
-      callRecordsService.addRecord(callData);
+      // Add new record
+      callRecordsService.addRecord({
+        dialerCallId: callData.id,
+        leadName: callData.leadName,
+        phone: callData.phone,
+        duration: callData.duration,
+        outcome: outcomeMap[callData.status],
+        timestamp: callData.startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        date: callData.startTime.toISOString().split('T')[0],
+        hasRecording: false,
+        notes: "Call initiated from dialer.",
+        agent: user?.name || "Unknown",
+        callType: 'outgoing',
+        leadId: callData.leadId,
+      });
     }
   };
 

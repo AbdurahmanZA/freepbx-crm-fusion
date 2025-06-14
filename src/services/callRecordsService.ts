@@ -1,4 +1,3 @@
-
 export interface CallRecord {
   id: number;
   leadName: string;
@@ -12,6 +11,7 @@ export interface CallRecord {
   agent: string;
   callType: 'incoming' | 'outgoing';
   leadId?: string;
+  dialerCallId?: string;
 }
 
 class CallRecordsService {
