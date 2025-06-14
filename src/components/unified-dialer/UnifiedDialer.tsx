@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from "react";
 import {
   Card,
@@ -282,32 +283,21 @@ const UnifiedDialer = ({ onCallInitiated, disabled }: UnifiedDialerProps) => {
       console.log('📞 [UnifiedDialer] Extracted data:', { phone, name, email, leadData });
       
       if (phone) {
-        // Use functional updates to ensure state is set correctly
-        console.log('📞 [UnifiedDialer] Setting phone number:', phone);
-        setPhoneNumber(prevPhone => {
-          console.log('📞 [UnifiedDialer] Phone updated from', prevPhone, 'to', phone);
-          return phone;
-        });
+        console.log('📞 [UnifiedDialer] Setting values directly...');
         
-        console.log('📞 [UnifiedDialer] Setting contact name:', name);
-        setContactName(prevName => {
-          console.log('📞 [UnifiedDialer] Name updated from', prevName, 'to', name);
-          return name;
-        });
+        // Set phone number
+        setPhoneNumber(phone);
+        console.log('📞 [UnifiedDialer] Phone set to:', phone);
         
-        const finalEmail = leadData?.email || email;
-        console.log('📞 [UnifiedDialer] Setting contact email:', finalEmail);
-        setContactEmail(prevEmail => {
-          console.log('📞 [UnifiedDialer] Email updated from', prevEmail, 'to', finalEmail);
-          return finalEmail;
-        });
+        // Set contact name - use leadData.name if available, fallback to name
+        const finalName = leadData?.name || name || "";
+        setContactName(finalName);
+        console.log('📞 [UnifiedDialer] Name set to:', finalName);
         
-        // If we have full lead data, use it for better population
-        if (leadData) {
-          console.log('📞 [UnifiedDialer] Using full lead data:', leadData);
-          setContactName(leadData.name || name);
-          setContactEmail(leadData.email || email);
-        }
+        // Set contact email - use leadData.email if available, fallback to email
+        const finalEmail = leadData?.email || email || "";
+        setContactEmail(finalEmail);
+        console.log('📞 [UnifiedDialer] Email set to:', finalEmail);
         
         // Auto-expand email panel if we have an email
         if (finalEmail) {
@@ -318,10 +308,20 @@ const UnifiedDialer = ({ onCallInitiated, disabled }: UnifiedDialerProps) => {
         // Show immediate feedback that values were received
         toast({
           title: "Lead Selected",
-          description: `Ready to call ${name || phone}. Dialer is populated and ready.`,
+          description: `Ready to call ${finalName || phone}. Dialer is populated and ready.`,
         });
         
         console.log('📞 [UnifiedDialer] State update completed');
+        
+        // Log the state after a brief delay to confirm it's set
+        setTimeout(() => {
+          console.log('📞 [UnifiedDialer] Verification - current state:', {
+            phoneNumber: phone,
+            contactName: finalName,
+            contactEmail: finalEmail
+          });
+        }, 50);
+        
       } else {
         console.log('📞 [UnifiedDialer] No phone number in event detail');
       }
@@ -334,7 +334,7 @@ const UnifiedDialer = ({ onCallInitiated, disabled }: UnifiedDialerProps) => {
       console.log('📞 [UnifiedDialer] Cleaning up event listener...');
       window.removeEventListener("unifiedDialerCall", handleUnifiedDialerCall as EventListener);
     };
-  }, [toast]); // Remove dependencies that might cause re-creation
+  }, []); // Empty dependency array to prevent re-creation
 
   // Email template functions
   const prepareEmailPreview = () => {
