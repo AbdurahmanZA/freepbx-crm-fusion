@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import LeadManagement from "@/components/LeadManagement";
@@ -8,6 +7,8 @@ import IntegrationSettings from "@/components/IntegrationSettings";
 import UserManagement from "@/components/UserManagement";
 import KnowledgeBase from "@/components/knowledge-base/KnowledgeBase";
 import UnifiedDialer from "@/components/unified-dialer/UnifiedDialer";
+import CallHistory from "@/components/call-center/CallHistory";
+import { callRecordsService, CallRecord } from "@/services/callRecordsService";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAMIContext } from "@/contexts/AMIContext";
 import DatabaseManagementCard from "@/components/integration/DatabaseManagementCard";
@@ -19,9 +20,11 @@ import {
   Settings as SettingsIcon,
   BookText,
   Users,
-  Mail
+  Mail,
+  Clock
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const IndexPage = () => {
   const { user } = useAuth();
@@ -29,6 +32,19 @@ const IndexPage = () => {
   const [activeTab, setActiveTab] = useState("leads");
 
   const [showUnifiedDialer, setShowUnifiedDialer] = useState(false);
+
+  // Call history state
+  const [callRecords, setCallRecords] = useState<CallRecord[]>([]);
+
+  useEffect(() => {
+    // Initial fetch
+    setCallRecords(callRecordsService.getRecords());
+    // Subscribe for updates
+    const unsubscribe = callRecordsService.subscribe((records) =>
+      setCallRecords(records)
+    );
+    return unsubscribe;
+  }, []);
 
   if (!user) return null;
 
@@ -150,9 +166,9 @@ const IndexPage = () => {
 
         {/* Expanded Dialer Panel */}
         {showUnifiedDialer && (
-          <div className="bg-background border rounded-lg shadow-xl w-[400px] max-h-[600px] overflow-hidden">
+          <div className="bg-background border rounded-lg shadow-xl w-[400px] max-h-[600px] overflow-y-auto">
             {/* Header with close button */}
-            <div className="flex items-center justify-between p-3 border-b bg-muted/30">
+            <div className="flex items-center justify-between p-3 border-b bg-muted/30 sticky top-0 z-10">
               <h3 className="font-semibold text-sm">Unified Dialer</h3>
               <Button
                 variant="ghost"
@@ -168,6 +184,19 @@ const IndexPage = () => {
             {/* Dialer Content */}
             <div className="p-3 space-y-4">
               <UnifiedDialer disabled={false} onCallInitiated={() => { }} />
+              
+              {/* Recent Calls Card */}
+              <Card className="w-full">
+                <CardHeader className="p-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Clock className="h-4 w-4" />
+                    Recent Calls
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-3 pt-0">
+                  <CallHistory calls={callRecords.slice(0, 5)} />
+                </CardContent>
+              </Card>
             </div>
           </div>
         )}

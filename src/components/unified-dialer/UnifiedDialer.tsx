@@ -20,9 +20,6 @@ import UnifiedDialerHeader from "./UnifiedDialerHeader";
 import UnifiedDialerAgentInfo from "./UnifiedDialerAgentInfo";
 import UnifiedDialerActiveCall from "./UnifiedDialerActiveCall";
 import UnifiedDialerPanelWrapper from "./UnifiedDialerPanelWrapper";
-import CallHistory from "@/components/call-center/CallHistory";
-import { callRecordsService, CallRecord } from "@/services/callRecordsService";
-import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 
 interface UnifiedDialerProps {
   onCallInitiated: (callData: {
@@ -51,20 +48,6 @@ const UnifiedDialer = ({ onCallInitiated, disabled }: UnifiedDialerProps) => {
     startTime: Date;
     status: "ringing" | "connected" | "on-hold" | "ended";
   } | null>(null);
-
-  // Call history state
-  const [showCallHistory, setShowCallHistory] = useState(true);
-  const [callRecords, setCallRecords] = useState<CallRecord[]>([]);
-
-  useEffect(() => {
-    // Initial fetch
-    setCallRecords(callRecordsService.getRecords());
-    // Subscribe for updates
-    const unsubscribe = callRecordsService.subscribe((records) =>
-      setCallRecords(records)
-    );
-    return unsubscribe;
-  }, []);
 
   // Monitor AMI events for call status updates
   useEffect(() => {
@@ -294,69 +277,39 @@ const UnifiedDialer = ({ onCallInitiated, disabled }: UnifiedDialerProps) => {
   }, [setPhoneNumber, setContactName, onCall, toast]);
 
   return (
-    <div className="flex flex-col md:flex-row items-start gap-4">
-      <Card className="h-fit shadow-sm border flex flex-col min-w-[275px] w-full max-w-md">
-        <UnifiedDialerHeader isConnected={isConnected} />
+    <Card className="h-fit shadow-sm border flex flex-col min-w-[275px] w-full">
+      <UnifiedDialerHeader isConnected={isConnected} />
 
-        <CardContent className="space-y-1 px-3 py-2 !pt-0">
-          <UnifiedDialerAgentInfo user={user} />
-          {!user?.extension && (
-            <p className="text-destructive mt-1 text-xs text-center">
-              No extension assigned
-            </p>
-          )}
+      <CardContent className="space-y-1 px-3 py-2 !pt-0">
+        <UnifiedDialerAgentInfo user={user} />
+        {!user?.extension && (
+          <p className="text-destructive mt-1 text-xs text-center">
+            No extension assigned
+          </p>
+        )}
 
-          {/* Active call status */}
-          {activeCall && (
-            <UnifiedDialerActiveCall activeCall={activeCall} />
-          )}
+        {/* Active call status */}
+        {activeCall && (
+          <UnifiedDialerActiveCall activeCall={activeCall} />
+        )}
 
-          <UnifiedDialerPanelWrapper
-            phoneNumber={phoneNumber}
-            setPhoneNumber={setPhoneNumber}
-            contactName={contactName}
-            setContactName={setContactName}
-            userExt={user?.extension}
-            isConnected={isConnected}
-            onCall={onCall}
-          />
+        <UnifiedDialerPanelWrapper
+          phoneNumber={phoneNumber}
+          setPhoneNumber={setPhoneNumber}
+          contactName={contactName}
+          setContactName={setContactName}
+          userExt={user?.extension}
+          isConnected={isConnected}
+          onCall={onCall}
+        />
 
-          {!isConnected && (
-            <p className="text-xs text-muted-foreground text-center mt-1">
-              Connect AMI in Integration Settings
-            </p>
-          )}
-        </CardContent>
-      </Card>
-      
-      {/* Recent Calls Card */}
-      <Card className="w-full max-w-md">
-        <Collapsible
-          open={showCallHistory}
-          onOpenChange={setShowCallHistory}
-        >
-          <CardHeader className="p-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Clock className="h-4 w-4" />
-                Recent Calls
-              </CardTitle>
-              <CollapsibleTrigger asChild>
-                <Button variant="ghost" size="sm" className="w-9 p-0 [&[data-state=open]>svg]:rotate-180">
-                  <ChevronDown className="h-4 w-4 transition-transform duration-200" />
-                  <span className="sr-only">Toggle</span>
-                </Button>
-              </CollapsibleTrigger>
-            </div>
-          </CardHeader>
-          <CollapsibleContent>
-            <CardContent className="p-3 pt-0">
-              <CallHistory calls={callRecords.slice(0, 5)} />
-            </CardContent>
-          </CollapsibleContent>
-        </Collapsible>
-      </Card>
-    </div>
+        {!isConnected && (
+          <p className="text-xs text-muted-foreground text-center mt-1">
+            Connect AMI in Integration Settings
+          </p>
+        )}
+      </CardContent>
+    </Card>
   );
 };
 
