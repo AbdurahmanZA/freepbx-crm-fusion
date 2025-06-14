@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -75,14 +74,12 @@ const UnifiedDialer = ({ onLeadCreated }: UnifiedDialerProps) => {
         description: `Preparing to call ${callData.name || 'Unknown Contact'}`,
       });
       
-      // Auto-initiate call after a brief delay to show the UI update
-      setTimeout(async () => {
-        await performCall(
-          callData.phone || callData.phoneNumber, 
-          callData.name || callData.leadName || callData.contactName, 
-          callData.leadId || callData.id
-        );
-      }, 500);
+      // Auto-initiate call immediately
+      await performCall(
+        callData.phone || callData.phoneNumber, 
+        callData.name || callData.leadName || callData.contactName, 
+        callData.leadId || callData.id
+      );
     };
 
     // Listen for multiple event types for better compatibility
@@ -97,7 +94,7 @@ const UnifiedDialer = ({ onLeadCreated }: UnifiedDialerProps) => {
         window.removeEventListener(eventType, handleUnifiedDialerCall as EventListener);
       });
     };
-  }, []);
+  }, [toast]); // Added toast to dependencies, performCall is defined in scope but relies on context/state
 
   // Real-time call timer - starts immediately when call begins
   useEffect(() => {
