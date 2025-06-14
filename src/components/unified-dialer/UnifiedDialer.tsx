@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from "react";
 import {
   Card,
@@ -238,43 +237,88 @@ const UnifiedDialer = ({ onCallInitiated, disabled }: UnifiedDialerProps) => {
     }
   };
 
-  // Event handler for "click to dial" from lead management
+  // Event handler for "click to dial" from lead management - FIXED
   useEffect(() => {
-    // Handler for the event
     const handleUnifiedDialerCall = (event: CustomEvent) => {
+      console.log('📞 [UnifiedDialer] Received call event:', event.detail);
+      
       const detail = event.detail || {};
-      // Expecting: { phone, name, leadId, contactName, phoneNumber, notes, ... }
       const phone = detail.phoneNumber || detail.phone;
       const name = detail.contactName || detail.name || "";
-      // Set state for phone number & contact name in dialer (use available setters)
-      if (typeof setPhoneNumber === "function") setPhoneNumber(phone || "");
-      if (typeof setContactName === "function") setContactName(name || "");
-      // Optionally: Initiate the call
-      if (typeof onCall === "function" && phone) {
-        setTimeout(() => {
-          onCall();
-          toast({
-            title: "Dialer Triggered",
-            description: `Calling ${name ? name : phone}`,
-          });
-        }, 100); // slight delay to ensure state updates
+      
+      console.log('📞 [UnifiedDialer] Extracted data:', { phone, name });
+      
+      if (phone) {
+        setPhoneNumber(phone);
+        setContactName(name);
+        
+        console.log('📞 [UnifiedDialer] Updated state, initiating call...');
+        
+        // Auto-initiate the call after setting the values
+        setTimeout(async () => {
+          if (!user?.extension || !isConnected) {
+            toast({
+              title: "Cannot Call",
+              description: !user?.extension 
+                ? "No extension assigned to your user account."
+                : "AMI not connected. Please check integration settings.",
+              variant: "destructive"
+            });
+            return;
+          }
+
+          try {
+            const success = await originateCall(
+              `PJSIP/${user.extension}`,
+              phone,
+              "from-internal"
+            );
+
+            if (success) {
+              const newCall = {
+                id: `call_${Date.now()}`,
+                leadName: name || "Unknown Contact",
+                phone: phone,
+                startTime: new Date(),
+                status: "ringing" as const,
+              };
+
+              setActiveCall(newCall);
+
+              onCallInitiated({
+                id: newCall.id,
+                leadName: newCall.leadName,
+                phone: newCall.phone,
+                duration: "00:00",
+                status: "ringing",
+                startTime: newCall.startTime,
+              });
+
+              toast({
+                title: "Call Initiated from Lead",
+                description: `Calling ${name || phone}...`,
+              });
+            }
+          } catch (error) {
+            console.error('📞 [UnifiedDialer] Auto-call failed:', error);
+            toast({
+              title: "Call Failed",
+              description: "Could not initiate call from lead click.",
+              variant: "destructive",
+            });
+          }
+        }, 100);
       }
     };
 
-    // Listen for event
-    window.addEventListener(
-      "unifiedDialerCall",
-      handleUnifiedDialerCall as EventListener
-    );
+    console.log('📞 [UnifiedDialer] Setting up event listener...');
+    window.addEventListener("unifiedDialerCall", handleUnifiedDialerCall as EventListener);
 
-    // Clean up
     return () => {
-      window.removeEventListener(
-        "unifiedDialerCall",
-        handleUnifiedDialerCall as EventListener
-      );
+      console.log('📞 [UnifiedDialer] Cleaning up event listener...');
+      window.removeEventListener("unifiedDialerCall", handleUnifiedDialerCall as EventListener);
     };
-  }, [setPhoneNumber, setContactName, onCall, toast]);
+  }, [user?.extension, isConnected, originateCall, onCallInitiated, toast]);
 
   return (
     <Card className="h-fit shadow-sm border flex flex-col w-full">
