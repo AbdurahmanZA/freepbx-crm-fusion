@@ -6,29 +6,11 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { 
-  Phone, 
-  PhoneCall, 
-  PhoneOff, 
-  Minimize2, 
-  Maximize2,
-  User,
-  Clock,
-  Mic,
-  MicOff,
-  Play,
-  Pause,
-  MessageCircle,
-  Activity,
-  Radio,
-  Users,
-  Send,
-  Mail,
-  Eye,
-  X,
-  ChevronDown,
-  ChevronUp
-} from "lucide-react";
+import { DialerPanel } from "./DialerPanel";
+import { ActiveCallDisplay } from "./ActiveCallDisplay";
+import { CallActivityPanel } from "./CallActivityPanel";
+import { UnifiedDialerEmailPanel } from "./UnifiedDialerEmailPanel";
+import { findMatchedLead, buildTemplateVars, Lead } from "./leadUtils";
 import { useToast } from "@/hooks/use-toast";
 import { useAMIContext } from "@/contexts/AMIContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -366,8 +348,8 @@ const UnifiedDialer = ({ onLeadCreated }: UnifiedDialerProps) => {
     }
   };
 
-  // --- Simulate available leads. In a real app, fetch or receive this from props/context/global state ---
-  const allLeads = [
+  // --- Simulated leads array (same as before, consider using a prop or context for real data) ---
+  const allLeads: Lead[] = [
     {
       id: "1",
       name: "John Smith",
@@ -398,25 +380,9 @@ const UnifiedDialer = ({ onLeadCreated }: UnifiedDialerProps) => {
   ];
   // ---
 
-  // Helper: Find lead matching phone/leadId (normalize for dashes/spaces etc)
-  function findMatchedLead() {
-    // Try to match by leadId if present in emailPreviewData or phoneNumber
-    let phoneLookup = phoneNumber ? phoneNumber.replace(/[\s\-]/g, '') : '';
-    let lead = null;
-    // Try to match by leadId (string or number)
-    if (emailPreviewData?.leadId) {
-      lead = allLeads.find(
-        l => l.id === emailPreviewData.leadId?.toString()
-      );
-    }
-    // If not found, try to match by phone
-    if (!lead && phoneLookup) {
-      lead = allLeads.find(
-        l => (l.phone || '').replace(/[\s\-]/g, '') === phoneLookup
-      );
-    }
-    return lead;
-  }
+  // --- Helper for matching lead moved to leadUtils.ts ---
+  // function findMatchedLead ...
+  // use: findMatchedLead({ leads: allLeads, phoneNumber, leadId: ... })
 
   const prepareEmailPreview = () => {
     if (!contactEmail || !selectedTemplate) {
@@ -430,8 +396,6 @@ const UnifiedDialer = ({ onLeadCreated }: UnifiedDialerProps) => {
 
     try {
       const templates = getEmailTemplates();
-      console.log('📧 [UnifiedDialer] Available templates for preview:', templates);
-      
       const template = templates.find((t: any) => t.id === selectedTemplate);
 
       if (!template) {
@@ -443,40 +407,26 @@ const UnifiedDialer = ({ onLeadCreated }: UnifiedDialerProps) => {
         return;
       }
 
-      // --- Main update: fill variables from the matched lead when possible ---
-      const matchedLead = findMatchedLead();
+      // Get matched lead for enhanced variable filling
+      const matchedLead = findMatchedLead({ leads: allLeads, phoneNumber, leadId: emailPreviewData?.leadId });
+      const templateVars = buildTemplateVars({
+        lead: matchedLead,
+        userName: user?.name,
+        fallbackName: contactName,
+        fallbackPhone: phoneNumber,
+        fallbackEmail: contactEmail,
+        fallbackCompany: localStorage.getItem('smtp_from_name') || undefined,
+        contactEmail,
+        phoneNumber
+      });
 
-      // Fallbacks
-      const fallback = {
-        name: contactName || "Valued Customer",
-        company: (localStorage.getItem('smtp_from_name') || 'Unknown Company'),
-        phone: phoneNumber || "N/A",
-        email: contactEmail || "N/A"
-      };
-
-      // Data to use in template variable replacements
-      const templateVars = {
-        customerName: matchedLead?.name || fallback.name,
-        companyName: matchedLead?.company || fallback.company,
-        phone: matchedLead?.phone || fallback.phone,
-        email: matchedLead?.email || fallback.email,
-        assignedAgent: matchedLead?.assignedAgent || (user?.name || "CRM Agent"),
-        notes: matchedLead?.notes || "",
-        formLink: `${window.location.origin}/customer-form?lead=${matchedLead?.id || ''}`,
-        lastContact: matchedLead?.lastContact || "",
-        status: matchedLead?.status || "",
-        priority: matchedLead?.priority || "",
-        source: matchedLead?.source || "",
-      };
-
-      // Replace all template variables
+      // Replace all template variables in subject/body
       let subject = template.subject;
       let body = template.body;
-
       Object.entries(templateVars).forEach(([key, value]) => {
         const reg = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
-        subject = subject.replace(reg, value);
-        body = body.replace(reg, value);
+        subject = subject.replace(reg, value as string);
+        body = body.replace(reg, value as string);
       });
 
       setEmailPreviewData({
@@ -687,224 +637,53 @@ const UnifiedDialer = ({ onLeadCreated }: UnifiedDialerProps) => {
               </div>
             </div>
 
-            {/* Call Activity Section */}
-            {showCallActivity && (
-              <div className="mb-4 p-3 bg-gray-50 border border-gray-200 rounded-lg">
-                <div className="flex items-center gap-2 mb-3">
-                  <Radio className="h-4 w-4 text-blue-600" />
-                  <span className="font-medium text-sm">PBX Call Activity</span>
-                  {isConnected ? (
-                    <Badge className="bg-green-100 text-green-800 text-xs">Live</Badge>
-                  ) : (
-                    <Badge variant="destructive" className="text-xs">Offline</Badge>
-                  )}
-                </div>
-                
-                {isConnected ? (
-                  <div className="space-y-2 max-h-32 overflow-y-auto">
-                    {callEvents.length > 0 ? (
-                      callEvents.slice(0, 5).map((event, index) => (
-                        <div key={index} className="text-xs bg-white p-2 rounded border">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <Badge className={`text-xs ${getEventStatusColor(event)}`}>
-                                {event.event}
-                              </Badge>
-                              {event.channel && (
-                                <span className="text-gray-600 truncate max-w-24">
-                                  {event.channel.split('/').pop()}
-                                </span>
-                              )}
-                              {event.calleridnum && (
-                                <span className="text-gray-800">
-                                  {event.calleridnum}
-                                </span>
-                              )}
-                            </div>
-                            <span className="text-gray-500">
-                              {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                            </span>
-                          </div>
-                          {event.dialstatus && (
-                            <div className="mt-1 text-gray-600">
-                              Status: {event.dialstatus}
-                            </div>
-                          )}
-                        </div>
-                      ))
-                    ) : (
-                      <div className="text-xs text-gray-500 text-center py-2">
-                        No recent call activity
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="text-xs text-gray-500 text-center py-2">
-                    Connect to AMI to see call activity
-                  </div>
-                )}
-              </div>
-            )}
+            {/* Call Activity Section (refactored) */}
+            <CallActivityPanel
+              show={showCallActivity}
+              onToggle={() => setShowCallActivity(!showCallActivity)}
+              callEvents={callEvents}
+              isConnected={isConnected}
+            />
 
-            {/* Active Call Display */}
+            {/* Active Call Display (refactored) */}
             {activeCall && (
-              <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                      <User className="h-4 w-4 text-green-600" />
-                    </div>
-                    <div>
-                      <div className="font-medium">{activeCall.leadName}</div>
-                      <div className="text-sm text-gray-600">{activeCall.phone}</div>
-                      <div className="flex items-center gap-2 mt-1">
-                        <Clock className="h-3 w-3" />
-                        <span className="text-sm font-mono font-bold text-green-700">
-                          {activeCall.duration}
-                        </span>
-                        <Badge className={`text-xs ${
-                          activeCall.status === 'connected' ? 'bg-green-100 text-green-800' :
-                          activeCall.status === 'ringing' ? 'bg-blue-100 text-blue-800' :
-                          'bg-yellow-100 text-yellow-800'
-                        }`}>
-                          {activeCall.status === 'ringing' ? 'Ringing' : 
-                           activeCall.status === 'on-hold' ? 'On Hold' : 'Connected'}
-                        </Badge>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button 
-                      size="sm" 
-                      variant={isMuted ? "destructive" : "outline"}
-                      onClick={toggleMute}
-                    >
-                      {isMuted ? <MicOff className="h-3 w-3" /> : <Mic className="h-3 w-3" />}
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      variant={activeCall.status === 'on-hold' ? "default" : "outline"}
-                      onClick={holdCall}
-                    >
-                      {activeCall.status === 'on-hold' ? <Play className="h-3 w-3" /> : <Pause className="h-3 w-3" />}
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      variant="destructive"
-                      onClick={endCall}
-                    >
-                      <PhoneOff className="h-3 w-3" />
-                    </Button>
-                  </div>
-                </div>
-              </div>
+              <ActiveCallDisplay
+                activeCall={activeCall}
+                isMuted={isMuted}
+                onMute={toggleMute}
+                onHold={holdCall}
+                onHangup={endCall}
+              />
             )}
 
-            {/* Dialer Interface */}
+            {/* Dialer Interface and Email Panel (refactored) */}
             {!activeCall && (
               <div className="space-y-4">
-                {/* Main dialer controls */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Input
-                      value={phoneNumber}
-                      onChange={(e) => setPhoneNumber(e.target.value)}
-                      placeholder="Phone number"
-                      className="text-sm"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Input
-                      value={contactName}
-                      onChange={(e) => setContactName(e.target.value)}
-                      placeholder="Contact name (optional)"
-                      className="text-sm"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Button 
-                      onClick={initiateCall} 
-                      disabled={!user?.extension || !phoneNumber || !isConnected}
-                      className="w-full"
-                      size="sm"
-                    >
-                      <PhoneCall className="h-3 w-3 mr-2" />
-                      {!isConnected ? 'AMI Not Connected' : !user?.extension ? 'No Extension' : 'Call'}
-                    </Button>
-                  </div>
-                </div>
+                <DialerPanel
+                  phoneNumber={phoneNumber}
+                  setPhoneNumber={setPhoneNumber}
+                  contactName={contactName}
+                  setContactName={setContactName}
+                  userExt={user?.extension}
+                  isConnected={isConnected}
+                  onCall={initiateCall}
+                />
 
                 {/* Collapsible Email Section */}
-                <Collapsible open={isEmailExpanded} onOpenChange={setIsEmailExpanded}>
-                  <CollapsibleTrigger asChild>
-                    <Button 
-                      variant="outline" 
-                      className="w-full flex items-center justify-between p-3 h-auto"
-                    >
-                      <div className="flex items-center gap-2">
-                        <Mail className="h-4 w-4 text-blue-600" />
-                        <span className="font-medium text-sm">Send Email Template</span>
-                      </div>
-                      {isEmailExpanded ? (
-                        <ChevronUp className="h-4 w-4" />
-                      ) : (
-                        <ChevronDown className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </CollapsibleTrigger>
-                  
-                  <CollapsibleContent className="space-y-0">
-                    <div className="p-3 bg-blue-50 border border-blue-200 rounded-b-lg border-t-0">
-                      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                        <Input
-                          value={contactEmail}
-                          onChange={(e) => setContactEmail(e.target.value)}
-                          placeholder="Email address"
-                          className="text-sm"
-                        />
-                        <div className="relative">
-                          <Select value={selectedTemplate} onValueChange={setSelectedTemplate}>
-                            <SelectTrigger className="text-sm">
-                              <SelectValue placeholder="Select template" />
-                            </SelectTrigger>
-                            <SelectContent side="top" className="z-50 bg-white shadow-lg border">
-                              {getEmailTemplates().map((template: any) => (
-                                <SelectItem key={template.id} value={template.id}>
-                                  {template.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <Button 
-                          onClick={prepareEmailPreview} 
-                          disabled={!contactEmail || !selectedTemplate}
-                          className="w-full"
-                          size="sm"
-                          variant="outline"
-                        >
-                          <Eye className="h-3 w-3 mr-2" />
-                          Preview
-                        </Button>
-                        <Button 
-                          onClick={prepareEmailPreview} 
-                          disabled={!contactEmail || !selectedTemplate}
-                          className="w-full"
-                          size="sm"
-                        >
-                          <Send className="h-3 w-3 mr-2" />
-                          Send Email
-                        </Button>
-                      </div>
-
-                      {getEmailTemplates().length === 0 && (
-                        <div className="mt-3 p-2 bg-yellow-100 border border-yellow-300 rounded text-xs text-yellow-700">
-                          No email templates found. Please create templates in Integration Settings first.
-                        </div>
-                      )}
-                    </div>
-                  </CollapsibleContent>
-                </Collapsible>
+                <UnifiedDialerEmailPanel
+                  isEmailExpanded={isEmailExpanded}
+                  setIsEmailExpanded={setIsEmailExpanded}
+                  contactEmail={contactEmail}
+                  setContactEmail={setContactEmail}
+                  selectedTemplate={selectedTemplate}
+                  setSelectedTemplate={setSelectedTemplate}
+                  getEmailTemplates={getEmailTemplates}
+                  prepareEmailPreview={prepareEmailPreview}
+                  showEmailPreview={showEmailPreview}
+                  setShowEmailPreview={setShowEmailPreview}
+                  emailPreviewData={emailPreviewData}
+                  sendEmailTemplate={sendEmailTemplate}
+                />
               </div>
             )}
           </CardContent>
