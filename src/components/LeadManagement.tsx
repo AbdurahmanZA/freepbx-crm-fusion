@@ -24,6 +24,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useAMIContext } from "@/contexts/AMIContext";
 import { useAuth } from "@/contexts/AuthContext";
+import LeadEmailTemplateDialog from "@/components/lead-management/LeadEmailTemplateDialog";
 
 interface LeadManagementProps {
   userRole: string;
@@ -384,7 +385,45 @@ const LeadManagement = ({ userRole }: LeadManagementProps) => {
     });
   };
 
-  const handleSendEmail = async (lead: Lead, templateType: string = 'form-link') => {
+  // Template dialog state for selected lead
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
+  const [dialogLead, setDialogLead] = useState<Lead | null>(null);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+  const [sendingEmail, setSendingEmail] = useState(false);
+
+  // Fetch templates from localStorage, fallback to default ones
+  const getTemplates = () => {
+    const stored = localStorage.getItem("email_templates");
+    if (stored) return JSON.parse(stored);
+    // fallback to default ones from EmailTemplateCard
+    return [
+      {
+        id: '1', name: 'Customer Information Form', subject: 'Please Complete Your Information', body: '', type: 'form-link'
+      }, {
+        id: '2', name: 'Quote Request Follow-up', subject: 'Your Quote Request - Next Steps', body: '', type: 'quote-request'
+      },
+      { id: '3', name: 'New Service Sign Up', subject: 'Welcome! Complete Your Service Registration', body: '', type: 'service-signup' },
+      { id: '4', name: 'Details Update Form', subject: 'Please Update Your Account Information', body: '', type: 'details-update' },
+      { id: '5', name: 'Latest Invoice and Statement Balance', subject: 'Your Latest Invoice and Account Statement', body: '', type: 'invoice-statement' }
+    ];
+  };
+
+  // OPEN DIALOG - called when user clicks "Email Form"
+  const handleEmailFormClick = (lead: Lead) => {
+    setDialogLead(lead);
+    setSelectedTemplateId(null);
+    setEmailDialogOpen(true);
+  };
+
+  // SEND EMAIL using chosen template
+  const handleTemplateSend = async () => {
+    if (!dialogLead || !selectedTemplateId) return;
+    setSendingEmail(true);
+
+    // Get template details
+    const allTemplates = getTemplates();
+    const template = allTemplates.find((t: any) => t.id === selectedTemplateId) || allTemplates[0];
+
     // Get SMTP config from localStorage
     const smtpEnabled = localStorage.getItem('smtp_enabled') === 'true';
     const smtpHost = localStorage.getItem('smtp_host');
@@ -396,52 +435,31 @@ const LeadManagement = ({ userRole }: LeadManagementProps) => {
         description: "Please configure SMTP settings in Integration Settings first.",
         variant: "destructive"
       });
-      return;
-    }
-
-    // Get email templates
-    const templates = JSON.parse(localStorage.getItem('email_templates') || '[]');
-    const template = templates.find((t: any) => t.type === templateType) || templates[0];
-
-    if (!template) {
-      toast({
-        title: "No Template Found",
-        description: "Please create an email template in Integration Settings first.",
-        variant: "destructive"
-      });
+      setSendingEmail(false);
       return;
     }
 
     try {
-      // Replace template variables
       const companyName = localStorage.getItem('smtp_from_name') || 'Your Company';
-      const formLink = `${window.location.origin}/customer-form?lead=${lead.id}`;
+      const formLink = `${window.location.origin}/customer-form?lead=${dialogLead.id}`;
       
       const subject = template.subject
-        .replace('{{customerName}}', lead.name)
+        .replace('{{customerName}}', dialogLead.name)
         .replace('{{companyName}}', companyName);
       
       const body = template.body
-        .replace('{{customerName}}', lead.name)
+        .replace('{{customerName}}', dialogLead.name)
         .replace('{{formLink}}', formLink)
         .replace('{{companyName}}', companyName)
-        .replace('{{phone}}', lead.phone)
-        .replace('{{email}}', lead.email);
+        .replace('{{phone}}', dialogLead.phone)
+        .replace('{{email}}', dialogLead.email);
 
-      console.log('📧 [LeadManagement] Sending email:', {
-        to: lead.email,
-        subject,
-        template: template.name
-      });
-
-      // In a real implementation, this would send the email via your backend
-      // For now, we'll simulate the email sending
+      // Simulate send
       await new Promise(resolve => setTimeout(resolve, 1000));
 
-      // Update lead status
       setLeads(prevLeads => 
         prevLeads.map(l => 
-          l.id === lead.id 
+          l.id === dialogLead.id 
             ? { ...l, status: 'contacted', lastContact: new Date().toISOString().split('T')[0] }
             : l
         )
@@ -449,25 +467,27 @@ const LeadManagement = ({ userRole }: LeadManagementProps) => {
 
       toast({
         title: "Email Sent",
-        description: `Email sent to ${lead.name} (${lead.email})`,
+        description: `Email sent to ${dialogLead.name} (${dialogLead.email})`,
       });
 
       // Send Discord notification
       if ((window as any).sendDiscordNotification) {
         (window as any).sendDiscordNotification(
-          lead.name, 
+          dialogLead.name, 
           'emailed', 
-          `Sent ${template.name} to ${lead.email}`
+          `Sent ${template.name} to ${dialogLead.email}`
         );
       }
 
+      setEmailDialogOpen(false);
     } catch (error) {
-      console.error('Email sending error:', error);
       toast({
         title: "Email Failed",
         description: "Could not send email. Please check your SMTP configuration.",
         variant: "destructive"
       });
+    } finally {
+      setSendingEmail(false);
     }
   };
 
@@ -633,7 +653,7 @@ const LeadManagement = ({ userRole }: LeadManagementProps) => {
                         </Button>
                         <Button 
                           size="sm" 
-                          onClick={() => handleSendEmail(lead, 'form-link')}
+                          onClick={() => handleEmailFormClick(lead)}
                           className="bg-blue-600 hover:bg-blue-700 flex items-center gap-1"
                         >
                           <Send className="h-3 w-3" />
@@ -676,6 +696,16 @@ const LeadManagement = ({ userRole }: LeadManagementProps) => {
           </div>
         </CardContent>
       </Card>
+      {/* Email Template Picker Dialog */}
+      <LeadEmailTemplateDialog
+        open={emailDialogOpen}
+        onClose={() => setEmailDialogOpen(false)}
+        templates={getTemplates()}
+        selectedTemplateId={selectedTemplateId}
+        onSelectTemplate={setSelectedTemplateId}
+        onSend={handleTemplateSend}
+        loading={sendingEmail}
+      />
     </div>
   );
 };
