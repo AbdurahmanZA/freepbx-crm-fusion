@@ -1,8 +1,10 @@
-import React from 'react';
 
-// Place handler functions above the component to avoid ReferenceError
+import React from 'react';
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Database, ShieldCheck, Trash } from "lucide-react";
+
 const handleMaintenance = async () => {
-  // Simulate some maintenance task (like clearing up duplicate data)
   alert("Maintenance task complete! Duplicates and cleanup handled.");
 };
 
@@ -11,7 +13,6 @@ const handleWipeLeads = async () => {
     return;
   }
   try {
-    // Simulate clearing all leads from system. Implement as needed.
     localStorage.setItem('leads', JSON.stringify([]));
     alert("All leads have been wiped from the system.");
   } catch (err) {
@@ -62,7 +63,6 @@ const DatabaseManagementCard = ({ userRole }) => {
       const reader = new FileReader();
       reader.onload = (e) => {
         try {
-          // Fix: Cast content to string before parsing!
           const content = e.target.result;
           const data = JSON.parse(content as string);
           localStorage.setItem('leads', JSON.stringify(data));
@@ -79,12 +79,9 @@ const DatabaseManagementCard = ({ userRole }) => {
     if (!jsonData || jsonData.length === 0) {
       return '';
     }
-
     const headers = Object.keys(jsonData[0]);
     const csvRows = [];
-
     csvRows.push(headers.join(','));
-
     for (const row of jsonData) {
       const values = headers.map(header => {
         const value = row[header];
@@ -92,48 +89,76 @@ const DatabaseManagementCard = ({ userRole }) => {
       });
       csvRows.push(values.join(','));
     }
-
     return csvRows.join('\n');
   };
 
   return (
-    <div className="card">
-      <div className="card-header">
-        <h3 className="card-title">Database Management</h3>
-      </div>
-      <div className="card-body">
-        <p>Manage your CRM database with these tools.</p>
-        <div className="flex gap-2 mt-4">
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Database className="h-5 w-5" />
+          CRM Database
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <p className="text-sm text-muted-foreground mb-4">
+          Use the tools below to manage your CRM leads database.
+        </p>
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:gap-2">
           {userRole !== "Agent" && (
             <>
-              <button className="btn btn-outline" onClick={handleBackup}>
-                Backup Database
-              </button>
-              <button className="btn btn-outline" onClick={handleExport}>
-                Export to CSV
-              </button>
-              <label className="btn btn-outline">
-                Import from JSON
-                <input type="file" accept=".json" style={{ display: 'none' }} onChange={handleImport} />
-              </label>
-              <button className="btn btn-outline" onClick={handleMaintenance}>
-                Maintenance
-              </button>
-              <button
-                className="btn btn-destructive"
-                onClick={handleWipeLeads}
-                style={{ marginLeft: '8px' }}
+              <Button
+                variant="outline"
+                onClick={handleBackup}
+                className="flex items-center gap-2"
               >
+                <ShieldCheck className="h-4 w-4" /> Backup Database
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleExport}
+                className="flex items-center gap-2"
+              >
+                <ShieldCheck className="h-4 w-4" /> Export to CSV
+              </Button>
+              {/* Import button with file input overlay */}
+              <label>
+                <Button variant="outline" className="flex items-center gap-2 cursor-pointer">
+                  <ShieldCheck className="h-4 w-4" />
+                  Import from JSON
+                  <input
+                    type="file"
+                    accept=".json"
+                    style={{ display: 'none' }}
+                    onChange={handleImport}
+                  />
+                </Button>
+              </label>
+              <Button
+                variant="outline"
+                onClick={handleMaintenance}
+                className="flex items-center gap-2"
+              >
+                <ShieldCheck className="h-4 w-4" /> Maintenance
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleWipeLeads}
+                className="flex items-center gap-2"
+              >
+                <Trash className="h-4 w-4" />
                 Wipe Leads
-              </button>
+              </Button>
             </>
           )}
         </div>
         {userRole === "Agent" && (
-          <p>Contact your manager to perform database management tasks.</p>
+          <p className="mt-3 text-xs text-orange-600">
+            Contact your manager to perform CRM database operations.
+          </p>
         )}
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 };
 

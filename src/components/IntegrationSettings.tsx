@@ -13,6 +13,7 @@ import GoogleCalendarCard from "./integration/GoogleCalendarCard";
 import SupabaseConfigCard from "./integration/SupabaseConfigCard";
 import SMTPConfigCard from "./integration/SMTPConfigCard";
 import EmailTemplateCard from "./integration/EmailTemplateCard";
+import ThemePicker from "./ThemePicker";
 
 interface ConnectionStatus {
   amiBridge: 'connected' | 'disconnected' | 'testing';
@@ -453,6 +454,9 @@ const IntegrationSettings = () => {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
+          <div className="mb-6">
+            <ThemePicker />
+          </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <AMIBridgeCard 
               connectionStatus={connectionStatus.amiBridge}

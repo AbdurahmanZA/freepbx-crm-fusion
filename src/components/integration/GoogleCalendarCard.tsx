@@ -1,11 +1,10 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Calendar, TestTube, Check, X } from "lucide-react";
+import { Calendar, TestTube, Check, X, Google } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface GoogleCalendarConfig {
@@ -22,7 +21,7 @@ interface GoogleCalendarCardProps {
   connectionStatus: 'connected' | 'disconnected' | 'testing';
 }
 
-const GoogleCalendarCard = ({ 
+const GoogleCalendarCard = ({
   config, 
   onConfigUpdate, 
   onTestConnection, 
@@ -46,6 +45,15 @@ const GoogleCalendarCard = ({
         variant: "destructive"
       });
     }
+  };
+
+  const handleConnectGoogle = () => {
+    // Just a mock. In production, should redirect to Google OAuth URL.
+    toast({
+      title: "Redirecting to Google account sign-in...",
+      description: "You will be able to connect your account for calendar sync.",
+    });
+    window.open("https://accounts.google.com/o/oauth2/auth", "_blank");
   };
 
   const getStatusIcon = () => {
@@ -99,6 +107,20 @@ const GoogleCalendarCard = ({
 
         {config.enabled && (
           <>
+            <div className="flex flex-col gap-2">
+              <Button
+                variant="accent"
+                size="sm"
+                className="w-fit flex items-center gap-2"
+                onClick={handleConnectGoogle}
+              >
+                <Google className="h-4 w-4" /> Connect Google Account
+              </Button>
+              <span className="text-xs text-muted-foreground ml-1">
+                Connect your Gmail/Google account to allow syncing with Callback Calendar.
+              </span>
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="default-calendar">Default Calendar Name</Label>
               <Input
