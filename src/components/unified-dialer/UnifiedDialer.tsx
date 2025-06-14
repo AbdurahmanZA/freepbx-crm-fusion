@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from "react";
 import {
   Card,
@@ -10,15 +11,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Phone, PhoneCall, Users, User, Clock, ChevronDown } from "lucide-react";
+import { Phone, PhoneCall, Users, User, Clock, ChevronDown, Mail } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAMIContext } from "@/contexts/AMIContext";
 import { useAuth } from "@/contexts/AuthContext";
-import DialerPanel from "./DialerPanel";
-import UnifiedDialerHeader from "./UnifiedDialerHeader";
-import UnifiedDialerAgentInfo from "./UnifiedDialerAgentInfo";
-import UnifiedDialerActiveCall from "./UnifiedDialerActiveCall";
-import UnifiedDialerPanelWrapper from "./UnifiedDialerPanelWrapper";
+import UnifiedDialerEmailPanel from "./UnifiedDialerEmailPanel";
+import { buildTemplateVars, findMatchedLead } from "./leadUtils";
 
 interface UnifiedDialerProps {
   onCallInitiated: (callData: {
@@ -39,6 +37,7 @@ const UnifiedDialer = ({ onCallInitiated, disabled }: UnifiedDialerProps) => {
   const { user } = useAuth();
   const [phoneNumber, setPhoneNumber] = useState("");
   const [contactName, setContactName] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
   const [activeCall, setActiveCall] = useState<{
     id: string;
     uniqueId?: string;
@@ -47,6 +46,18 @@ const UnifiedDialer = ({ onCallInitiated, disabled }: UnifiedDialerProps) => {
     startTime: Date;
     status: "ringing" | "connected" | "on-hold" | "ended";
   } | null>(null);
+
+  // Email panel state
+  const [isEmailExpanded, setIsEmailExpanded] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState("");
+  const [showEmailPreview, setShowEmailPreview] = useState(false);
+  const [emailPreviewData, setEmailPreviewData] = useState<any>(null);
+
+  // Get email templates from localStorage
+  const getEmailTemplates = () => {
+    const saved = localStorage.getItem('email_templates');
+    return saved ? JSON.parse(saved) : [];
+  };
 
   // Monitor AMI events for call status updates
   useEffect(() => {
@@ -238,7 +249,27 @@ const UnifiedDialer = ({ onCallInitiated, disabled }: UnifiedDialerProps) => {
     }
   };
 
-  // Event handler for "click to dial" from lead management - FIXED
+  // Function to lookup and populate contact data from leads
+  const populateContactFromLeads = (phone: string, name?: string) => {
+    const leads = JSON.parse(localStorage.getItem('leads') || '[]');
+    const normalizedPhone = phone.replace(/[\s\-\(\)]/g, '');
+    
+    const matchedLead = leads.find((lead: any) => {
+      const leadPhone = (lead.phone || '').replace(/[\s\-\(\)]/g, '');
+      return leadPhone === normalizedPhone;
+    });
+
+    if (matchedLead) {
+      setContactName(matchedLead.name || name || "");
+      setContactEmail(matchedLead.email || "");
+      console.log('📞 [UnifiedDialer] Found matching lead:', matchedLead);
+    } else {
+      setContactName(name || "");
+      setContactEmail("");
+    }
+  };
+
+  // Event handler for "click to dial" from lead management
   useEffect(() => {
     const handleUnifiedDialerCall = (event: CustomEvent) => {
       console.log('📞 [UnifiedDialer] Received call event:', event.detail);
@@ -252,7 +283,9 @@ const UnifiedDialer = ({ onCallInitiated, disabled }: UnifiedDialerProps) => {
       if (phone) {
         // Set the values in the dialer inputs
         setPhoneNumber(phone);
-        setContactName(name);
+        
+        // Populate contact data from leads database
+        populateContactFromLeads(phone, name);
         
         console.log('📞 [UnifiedDialer] Updated state with phone and name');
         
@@ -261,23 +294,6 @@ const UnifiedDialer = ({ onCallInitiated, disabled }: UnifiedDialerProps) => {
           title: "Lead Selected",
           description: `Ready to call ${name || phone}. Check the dialer drawer.`,
         });
-
-        // Optional: Auto-initiate the call after a longer delay to let user see the populated fields
-        // setTimeout(async () => {
-        //   if (!user?.extension || !isConnected) {
-        //     toast({
-        //       title: "Cannot Auto-Call",
-        //       description: !user?.extension 
-        //         ? "No extension assigned to your user account."
-        //         : "AMI not connected. Please check integration settings.",
-        //       variant: "destructive"
-        //     });
-        //     return;
-        //   }
-
-        //   // Call the onCall function to initiate the call
-        //   onCall();
-        // }, 1500); // Give user time to see the populated fields
       }
     };
 
@@ -288,93 +304,175 @@ const UnifiedDialer = ({ onCallInitiated, disabled }: UnifiedDialerProps) => {
       console.log('📞 [UnifiedDialer] Cleaning up event listener...');
       window.removeEventListener("unifiedDialerCall", handleUnifiedDialerCall as EventListener);
     };
-  }, [user?.extension, isConnected, toast]);
+  }, []);
+
+  // Email template functions
+  const prepareEmailPreview = () => {
+    const templates = getEmailTemplates();
+    const template = templates.find((t: any) => t.id === selectedTemplate);
+    
+    if (!template || !contactEmail) {
+      toast({
+        title: "Missing Information",
+        description: "Please select a template and enter an email address.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Get lead data for template variables
+    const leads = JSON.parse(localStorage.getItem('leads') || '[]');
+    const matchedLead = findMatchedLead({ leads, phoneNumber });
+    
+    const templateVars = buildTemplateVars({
+      lead: matchedLead,
+      userName: user?.name,
+      fallbackName: contactName,
+      fallbackPhone: phoneNumber,
+      fallbackEmail: contactEmail,
+      contactEmail,
+      phoneNumber,
+    });
+
+    // Replace template variables
+    let subject = template.subject;
+    let body = template.body;
+    
+    Object.entries(templateVars).forEach(([key, value]) => {
+      const regex = new RegExp(`{{${key}}}`, 'g');
+      subject = subject.replace(regex, value as string);
+      body = body.replace(regex, value as string);
+    });
+
+    setEmailPreviewData({
+      to: contactEmail,
+      templateName: template.name,
+      subject,
+      body
+    });
+    
+    setShowEmailPreview(true);
+  };
+
+  const sendEmailTemplate = () => {
+    if (!emailPreviewData) return;
+    
+    // Here you would implement actual email sending
+    // For now, just show success message
+    toast({
+      title: "Email Sent",
+      description: `Email sent to ${emailPreviewData.to}`,
+    });
+    
+    setShowEmailPreview(false);
+    setIsEmailExpanded(false);
+  };
 
   return (
-    <Card className="h-fit shadow-sm border flex flex-col w-full">
-      <CardHeader className="pb-1 px-3 pt-2">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Phone className="h-4 w-4 text-primary" />
-            <CardTitle className="text-sm font-medium">Unified Dialer</CardTitle>
-          </div>
-          <div className="flex items-center gap-1">
-            <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
-            <span className="text-xs text-muted-foreground">
-              {isConnected ? 'Connected' : 'Offline'}
-            </span>
-          </div>
-        </div>
-      </CardHeader>
-
-      <CardContent className="space-y-2 px-3 py-2 !pt-0">
-        {/* Agent Info - Compact */}
-        <div className="flex items-center gap-2 text-xs">
-          <User className="h-3 w-3 text-muted-foreground" />
-          <span className="font-medium">{user?.name}</span>
-          {user?.extension && (
-            <span className="text-muted-foreground">Ext: {user.extension}</span>
-          )}
-        </div>
-        
-        {!user?.extension && (
-          <p className="text-destructive text-xs">No extension assigned</p>
-        )}
-
-        {/* Active call status - Compact */}
-        {activeCall && (
-          <div className="p-2 bg-green-50 border border-green-200 rounded">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center">
-                  <User className="h-3 w-3 text-green-600" />
-                </div>
-                <div>
-                  <div className="text-sm font-medium">{activeCall.leadName}</div>
-                  <div className="text-xs text-gray-600">{activeCall.phone}</div>
-                </div>
-              </div>
-              <div className="text-xs font-mono font-bold text-green-700">
-                {activeCall.status === 'ringing' ? 'Ringing' :
-                 activeCall.status === 'on-hold' ? 'On Hold' : 'Connected'}
-              </div>
+    <div className="space-y-2">
+      <Card className="h-fit shadow-sm border flex flex-col w-full">
+        <CardHeader className="pb-1 px-3 pt-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Phone className="h-4 w-4 text-primary" />
+              <CardTitle className="text-sm font-medium">Unified Dialer</CardTitle>
+            </div>
+            <div className="flex items-center gap-1">
+              <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
+              <span className="text-xs text-muted-foreground">
+                {isConnected ? 'Connected' : 'Offline'}
+              </span>
             </div>
           </div>
-        )}
+        </CardHeader>
 
-        {/* Dialer Panel - Compact */}
-        <div className="grid grid-cols-2 gap-2">
-          <Input
-            value={phoneNumber}
-            onChange={e => setPhoneNumber(e.target.value)}
-            placeholder="Phone number"
-            className="text-sm h-8"
-          />
-          <Input
-            value={contactName}
-            onChange={e => setContactName(e.target.value)}
-            placeholder="Contact name"
-            className="text-sm h-8"
-          />
-        </div>
+        <CardContent className="space-y-2 px-3 py-2 !pt-0">
+          {/* Agent Info - Compact */}
+          <div className="flex items-center gap-2 text-xs">
+            <User className="h-3 w-3 text-muted-foreground" />
+            <span className="font-medium">{user?.name}</span>
+            {user?.extension && (
+              <span className="text-muted-foreground">Ext: {user.extension}</span>
+            )}
+          </div>
+          
+          {!user?.extension && (
+            <p className="text-destructive text-xs">No extension assigned</p>
+          )}
 
-        <Button
-          onClick={onCall}
-          disabled={!user?.extension || !phoneNumber || !isConnected}
-          className="w-full h-8 text-sm"
-          size="sm"
-        >
-          <PhoneCall className="h-3 w-3 mr-2" />
-          {!isConnected ? 'AMI Not Connected' : !user?.extension ? 'No Extension' : 'Call'}
-        </Button>
+          {/* Active call status - Compact */}
+          {activeCall && (
+            <div className="p-2 bg-green-50 border border-green-200 rounded">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center">
+                    <User className="h-3 w-3 text-green-600" />
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium">{activeCall.leadName}</div>
+                    <div className="text-xs text-gray-600">{activeCall.phone}</div>
+                  </div>
+                </div>
+                <div className="text-xs font-mono font-bold text-green-700">
+                  {activeCall.status === 'ringing' ? 'Ringing' :
+                   activeCall.status === 'on-hold' ? 'On Hold' : 'Connected'}
+                </div>
+              </div>
+            </div>
+          )}
 
-        {!isConnected && (
-          <p className="text-xs text-muted-foreground text-center">
-            Connect AMI in Integration Settings
-          </p>
-        )}
-      </CardContent>
-    </Card>
+          {/* Dialer Panel - Compact */}
+          <div className="grid grid-cols-2 gap-2">
+            <Input
+              value={phoneNumber}
+              onChange={e => setPhoneNumber(e.target.value)}
+              placeholder="Phone number"
+              className="text-sm h-8"
+            />
+            <Input
+              value={contactName}
+              onChange={e => setContactName(e.target.value)}
+              placeholder="Contact name"
+              className="text-sm h-8"
+            />
+          </div>
+
+          <Button
+            onClick={onCall}
+            disabled={!user?.extension || !phoneNumber || !isConnected}
+            className="w-full h-8 text-sm"
+            size="sm"
+          >
+            <PhoneCall className="h-3 w-3 mr-2" />
+            {!isConnected ? 'AMI Not Connected' : !user?.extension ? 'No Extension' : 'Call'}
+          </Button>
+
+          {!isConnected && (
+            <p className="text-xs text-muted-foreground text-center">
+              Connect AMI in Integration Settings
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Email Template Panel */}
+      <UnifiedDialerEmailPanel
+        isEmailExpanded={isEmailExpanded}
+        setIsEmailExpanded={setIsEmailExpanded}
+        contactEmail={contactEmail}
+        setContactEmail={setContactEmail}
+        selectedTemplate={selectedTemplate}
+        setSelectedTemplate={setSelectedTemplate}
+        getEmailTemplates={getEmailTemplates}
+        prepareEmailPreview={prepareEmailPreview}
+        showEmailPreview={showEmailPreview}
+        setShowEmailPreview={setShowEmailPreview}
+        emailPreviewData={emailPreviewData}
+        sendEmailTemplate={sendEmailTemplate}
+        contactName={contactName}
+        phoneNumber={phoneNumber}
+      />
+    </div>
   );
 };
 
