@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +23,7 @@ import { databaseService, BackupMetadata } from "@/services/databaseService";
 
 const DatabaseManagementCard = () => {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [backups, setBackups] = useState<BackupMetadata[]>([]);
   const [loading, setLoading] = useState(false);
   const [backupDescription, setBackupDescription] = useState('');
@@ -172,6 +174,9 @@ const DatabaseManagementCard = () => {
     }
   };
 
+  // Simple flag for Agent 
+  const isAgent = user?.role.toLowerCase() === "agent";
+
   return (
     <Card>
       <CardHeader>
@@ -200,8 +205,10 @@ const DatabaseManagementCard = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Button 
               onClick={handleExport}
-              disabled={loading}
+              disabled={loading || isAgent}
               className="flex items-center gap-2"
+              title={isAgent ? "Agents cannot export the database" : undefined}
+              style={isAgent ? { opacity: 0.5, pointerEvents: 'none' } : {}}
             >
               <Download className="h-4 w-4" />
               Export Database
@@ -212,13 +219,14 @@ const DatabaseManagementCard = () => {
                 type="file"
                 accept=".json"
                 onChange={handleImport}
-                disabled={loading}
+                disabled={loading || isAgent}
                 className="hidden"
                 id="import-file"
               />
               <Label 
                 htmlFor="import-file" 
-                className="flex items-center gap-2 cursor-pointer bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 rounded-md text-sm font-medium transition-colors"
+                className={`flex items-center gap-2 cursor-pointer bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 rounded-md text-sm font-medium transition-colors ${isAgent ? "opacity-50 pointer-events-none" : ""}`}
+                title={isAgent ? "Agents cannot import the database" : undefined}
               >
                 <Upload className="h-4 w-4" />
                 Import Database
@@ -233,99 +241,103 @@ const DatabaseManagementCard = () => {
         </div>
 
         {/* Backup Section */}
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Backup & Restore</h3>
-          
-          <div className="space-y-2">
-            <Label htmlFor="backup-description">Backup Description (Optional)</Label>
-            <Textarea
-              id="backup-description"
-              value={backupDescription}
-              onChange={(e) => setBackupDescription(e.target.value)}
-              placeholder="Enter a description for this backup..."
-              rows={2}
-            />
+        {!isAgent && (
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">Backup & Restore</h3>
+            
+            <div className="space-y-2">
+              <Label htmlFor="backup-description">Backup Description (Optional)</Label>
+              <Textarea
+                id="backup-description"
+                value={backupDescription}
+                onChange={(e) => setBackupDescription(e.target.value)}
+                placeholder="Enter a description for this backup..."
+                rows={2}
+              />
+            </div>
+            
+            <Button 
+              onClick={handleCreateBackup}
+              disabled={loading}
+              className="flex items-center gap-2"
+            >
+              <Save className="h-4 w-4" />
+              Create Backup
+            </Button>
           </div>
-          
-          <Button 
-            onClick={handleCreateBackup}
-            disabled={loading}
-            className="flex items-center gap-2"
-          >
-            <Save className="h-4 w-4" />
-            Create Backup
-          </Button>
-        </div>
+        )}
 
         {/* Backup List */}
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold">Available Backups</h3>
-            <Badge variant="outline">{backups.length} backups</Badge>
-          </div>
-          
-          {backups.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <HardDrive className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>No backups available</p>
-              <p className="text-sm">Create your first backup above</p>
+        {!isAgent && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">Available Backups</h3>
+              <Badge variant="outline">{backups.length} backups</Badge>
             </div>
-          ) : (
-            <div className="space-y-3">
-              {backups.map((backup) => (
-                <Card key={backup.id} className="border">
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <FileText className="h-4 w-4" />
-                          <span className="font-medium">{backup.name}</span>
-                          <Badge variant="outline" className="text-xs">
-                            {backup.size}
-                          </Badge>
-                        </div>
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                          <div className="flex items-center gap-1">
-                            <Calendar className="h-3 w-3" />
-                            {format(backup.timestamp, 'PPpp')}
+            
+            {backups.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <HardDrive className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>No backups available</p>
+                <p className="text-sm">Create your first backup above</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {backups.map((backup) => (
+                  <Card key={backup.id} className="border">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <FileText className="h-4 w-4" />
+                            <span className="font-medium">{backup.name}</span>
+                            <Badge variant="outline" className="text-xs">
+                              {backup.size}
+                            </Badge>
                           </div>
-                          <span>v{backup.version}</span>
+                          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                            <div className="flex items-center gap-1">
+                              <Calendar className="h-3 w-3" />
+                              {format(backup.timestamp, 'PPpp')}
+                            </div>
+                            <span>v{backup.version}</span>
+                          </div>
+                          {backup.description && (
+                            <p className="text-sm text-muted-foreground mt-1">
+                              {backup.description}
+                            </p>
+                          )}
                         </div>
-                        {backup.description && (
-                          <p className="text-sm text-muted-foreground mt-1">
-                            {backup.description}
-                          </p>
-                        )}
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleRestoreBackup(backup.id)}
+                            disabled={loading}
+                            className="flex items-center gap-1"
+                          >
+                            <RotateCcw className="h-3 w-3" />
+                            Restore
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => handleDeleteBackup(backup.id)}
+                            disabled={loading}
+                            className="flex items-center gap-1"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                            Delete
+                          </Button>
+                        </div>
                       </div>
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleRestoreBackup(backup.id)}
-                          disabled={loading}
-                          className="flex items-center gap-1"
-                        >
-                          <RotateCcw className="h-3 w-3" />
-                          Restore
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => handleDeleteBackup(backup.id)}
-                          disabled={loading}
-                          className="flex items-center gap-1"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                          Delete
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </CardContent>
     </Card>
   );

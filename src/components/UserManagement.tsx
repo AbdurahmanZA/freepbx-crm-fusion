@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
@@ -13,6 +14,7 @@ import { userService, User, CreateUserData } from "@/services/userService";
 
 const UserManagement = () => {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -209,14 +211,17 @@ const UserManagement = () => {
                 <Plus className="h-4 w-4" />
                 Add User
               </Button>
-              <Button 
-                variant="outline" 
-                className="flex items-center gap-2"
-                onClick={exportUsers}
-              >
-                <Download className="h-4 w-4" />
-                Export
-              </Button>
+              {/* Hide Export button if agent */}
+              {user?.role.toLowerCase() !== "agent" && (
+                <Button 
+                  variant="outline" 
+                  className="flex items-center gap-2"
+                  onClick={exportUsers}
+                >
+                  <Download className="h-4 w-4" />
+                  Export
+                </Button>
+              )}
             </div>
           </div>
         </CardHeader>

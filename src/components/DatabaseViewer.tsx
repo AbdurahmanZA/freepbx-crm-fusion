@@ -1,5 +1,5 @@
-
 import { useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,6 +39,7 @@ interface CallRecord {
 
 const DatabaseViewer = () => {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedFormat, setSelectedFormat] = useState<'csv' | 'json' | 'xlsx'>('csv');
 
@@ -180,6 +181,8 @@ const DatabaseViewer = () => {
     }
   };
 
+  const isAgent = user?.role.toLowerCase() === "agent";
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -215,6 +218,8 @@ const DatabaseViewer = () => {
                 size="sm"
                 onClick={() => setSelectedFormat('csv')}
                 className="flex items-center gap-1"
+                disabled={isAgent}
+                title={isAgent ? "Agents cannot export data" : undefined}
               >
                 <FileText className="h-3 w-3" />
                 CSV
@@ -224,6 +229,8 @@ const DatabaseViewer = () => {
                 size="sm"
                 onClick={() => setSelectedFormat('json')}
                 className="flex items-center gap-1"
+                disabled={isAgent}
+                title={isAgent ? "Agents cannot export data" : undefined}
               >
                 <FileText className="h-3 w-3" />
                 JSON
@@ -233,12 +240,19 @@ const DatabaseViewer = () => {
                 size="sm"
                 onClick={() => setSelectedFormat('xlsx')}
                 className="flex items-center gap-1"
+                disabled={isAgent}
+                title={isAgent ? "Agents cannot export data" : undefined}
               >
                 <FileSpreadsheet className="h-3 w-3" />
                 Excel
               </Button>
             </div>
-            <Button onClick={() => exportData(selectedFormat)} className="flex items-center gap-2">
+            <Button 
+              onClick={() => exportData(selectedFormat)} 
+              className="flex items-center gap-2"
+              disabled={isAgent}
+              title={isAgent ? "Agents cannot export data" : undefined}
+            >
               <Download className="h-4 w-4" />
               Export {selectedFormat.toUpperCase()}
             </Button>
