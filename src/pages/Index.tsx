@@ -28,7 +28,7 @@ const IndexPage = () => {
   const { connect, isConnected } = useAMIContext();
   const [activeTab, setActiveTab] = useState("leads");
 
-  const [showUnifiedDialer, setShowUnifiedDialer] = useState(true);
+  const [showUnifiedDialer, setShowUnifiedDialer] = useState(false);
 
   if (!user) return null;
 
@@ -133,38 +133,42 @@ const IndexPage = () => {
         )}
       </Tabs>
 
-      {/* Floating Unified Dialer - fixed at bottom right */}
-      <div
-        className="fixed z-50 bottom-6 right-6 w-full max-w-md sm:w-[26rem] rounded-xl shadow-lg bg-background border transition-all"
-        style={{
-          boxShadow:
-            "0 8px 24px rgba(0,0,0,0.16), 0 1.5px 6px rgba(0,0,0,0.10)",
-        }}
-      >
-        {/* Collapse/Expand Button inside floating box */}
-        <div className="flex justify-center border-b">
+      {/* Floating Unified Dialer - compact floating menu */}
+      <div className="fixed bottom-4 right-4 z-50">
+        {/* Floating Toggle Button */}
+        {!showUnifiedDialer && (
           <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowUnifiedDialer(!showUnifiedDialer)}
-            className="rounded-b-none border-b-0"
+            onClick={() => setShowUnifiedDialer(true)}
+            className="rounded-full w-14 h-14 shadow-lg"
+            size="icon"
           >
-            {showUnifiedDialer ? (
-              <>
-                <svg className="h-4 w-4 mr-1" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
-                Hide Dialer
-              </>
-            ) : (
-              <>
-                <svg className="h-4 w-4 mr-1" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" /></svg>
-                Show Dialer
-              </>
-            )}
+            <svg className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+            </svg>
           </Button>
-        </div>
+        )}
+
+        {/* Expanded Dialer Panel */}
         {showUnifiedDialer && (
-          <div className="p-4">
-            <UnifiedDialer disabled={false} onCallInitiated={() => { }} />
+          <div className="bg-background border rounded-lg shadow-xl w-80 max-h-96 overflow-hidden">
+            {/* Header with close button */}
+            <div className="flex items-center justify-between p-3 border-b bg-muted/30">
+              <h3 className="font-semibold text-sm">Unified Dialer</h3>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowUnifiedDialer(false)}
+                className="h-6 w-6 p-0"
+              >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </Button>
+            </div>
+            {/* Dialer Content */}
+            <div className="p-3">
+              <UnifiedDialer disabled={false} onCallInitiated={() => { }} />
+            </div>
           </div>
         )}
       </div>
@@ -173,4 +177,3 @@ const IndexPage = () => {
 };
 
 export default IndexPage;
-
