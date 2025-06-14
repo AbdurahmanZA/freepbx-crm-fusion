@@ -221,8 +221,9 @@ const UnifiedDialer = ({ onCallInitiated, disabled }: UnifiedDialerProps) => {
           } at ${phoneNumber} from PJSIP extension ${user.extension}`,
         });
 
-        setPhoneNumber("");
-        setContactName("");
+        // DON'T clear the fields immediately - keep them visible
+        // setPhoneNumber("");
+        // setContactName("");
       } else {
         throw new Error("AMI originate call failed");
       }
@@ -249,65 +250,34 @@ const UnifiedDialer = ({ onCallInitiated, disabled }: UnifiedDialerProps) => {
       console.log('📞 [UnifiedDialer] Extracted data:', { phone, name });
       
       if (phone) {
+        // Set the values in the dialer inputs
         setPhoneNumber(phone);
         setContactName(name);
         
-        console.log('📞 [UnifiedDialer] Updated state, initiating call...');
+        console.log('📞 [UnifiedDialer] Updated state with phone and name');
         
-        // Auto-initiate the call after setting the values
-        setTimeout(async () => {
-          if (!user?.extension || !isConnected) {
-            toast({
-              title: "Cannot Call",
-              description: !user?.extension 
-                ? "No extension assigned to your user account."
-                : "AMI not connected. Please check integration settings.",
-              variant: "destructive"
-            });
-            return;
-          }
+        // Show immediate feedback that values were received
+        toast({
+          title: "Lead Selected",
+          description: `Ready to call ${name || phone}. Check the dialer drawer.`,
+        });
 
-          try {
-            const success = await originateCall(
-              `PJSIP/${user.extension}`,
-              phone,
-              "from-internal"
-            );
+        // Optional: Auto-initiate the call after a longer delay to let user see the populated fields
+        // setTimeout(async () => {
+        //   if (!user?.extension || !isConnected) {
+        //     toast({
+        //       title: "Cannot Auto-Call",
+        //       description: !user?.extension 
+        //         ? "No extension assigned to your user account."
+        //         : "AMI not connected. Please check integration settings.",
+        //       variant: "destructive"
+        //     });
+        //     return;
+        //   }
 
-            if (success) {
-              const newCall = {
-                id: `call_${Date.now()}`,
-                leadName: name || "Unknown Contact",
-                phone: phone,
-                startTime: new Date(),
-                status: "ringing" as const,
-              };
-
-              setActiveCall(newCall);
-
-              onCallInitiated({
-                id: newCall.id,
-                leadName: newCall.leadName,
-                phone: newCall.phone,
-                duration: "00:00",
-                status: "ringing",
-                startTime: newCall.startTime,
-              });
-
-              toast({
-                title: "Call Initiated from Lead",
-                description: `Calling ${name || phone}...`,
-              });
-            }
-          } catch (error) {
-            console.error('📞 [UnifiedDialer] Auto-call failed:', error);
-            toast({
-              title: "Call Failed",
-              description: "Could not initiate call from lead click.",
-              variant: "destructive",
-            });
-          }
-        }, 100);
+        //   // Call the onCall function to initiate the call
+        //   onCall();
+        // }, 1500); // Give user time to see the populated fields
       }
     };
 
@@ -318,11 +288,11 @@ const UnifiedDialer = ({ onCallInitiated, disabled }: UnifiedDialerProps) => {
       console.log('📞 [UnifiedDialer] Cleaning up event listener...');
       window.removeEventListener("unifiedDialerCall", handleUnifiedDialerCall as EventListener);
     };
-  }, [user?.extension, isConnected, originateCall, onCallInitiated, toast]);
+  }, [user?.extension, isConnected, toast]);
 
   return (
     <Card className="h-fit shadow-sm border flex flex-col w-full">
-      <CardHeader className="pb-2 px-3 pt-3">
+      <CardHeader className="pb-1 px-3 pt-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Phone className="h-4 w-4 text-primary" />
