@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from "react";
 import {
   Card,
@@ -10,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Phone, PhoneCall, Users, User } from "lucide-react";
+import { Phone, PhoneCall, Users, User, Clock, ChevronDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAMIContext } from "@/contexts/AMIContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -21,7 +22,7 @@ import UnifiedDialerActiveCall from "./UnifiedDialerActiveCall";
 import UnifiedDialerPanelWrapper from "./UnifiedDialerPanelWrapper";
 import CallHistory from "@/components/call-center/CallHistory";
 import { callRecordsService, CallRecord } from "@/services/callRecordsService";
-import { ChevronUp, ChevronDown } from "lucide-react";
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 
 interface UnifiedDialerProps {
   onCallInitiated: (callData: {
@@ -52,7 +53,7 @@ const UnifiedDialer = ({ onCallInitiated, disabled }: UnifiedDialerProps) => {
   } | null>(null);
 
   // Call history state
-  const [showCallHistory, setShowCallHistory] = useState(false);
+  const [showCallHistory, setShowCallHistory] = useState(true);
   const [callRecords, setCallRecords] = useState<CallRecord[]>([]);
 
   useEffect(() => {
@@ -293,60 +294,69 @@ const UnifiedDialer = ({ onCallInitiated, disabled }: UnifiedDialerProps) => {
   }, [setPhoneNumber, setContactName, onCall, toast]);
 
   return (
-    <Card className="h-fit shadow-sm border flex flex-col min-w-[275px] max-w-md mx-auto">
-      <UnifiedDialerHeader isConnected={isConnected} />
+    <div className="flex flex-col md:flex-row items-start gap-4">
+      <Card className="h-fit shadow-sm border flex flex-col min-w-[275px] w-full max-w-md">
+        <UnifiedDialerHeader isConnected={isConnected} />
 
-      <CardContent className="space-y-1 px-3 py-2 !pt-0">
-        <UnifiedDialerAgentInfo user={user} />
-        {!user?.extension && (
-          <p className="text-destructive mt-1 text-xs text-center">
-            No extension assigned
-          </p>
-        )}
-
-        {/* Active call status */}
-        {activeCall && (
-          <UnifiedDialerActiveCall activeCall={activeCall} />
-        )}
-
-        <UnifiedDialerPanelWrapper
-          phoneNumber={phoneNumber}
-          setPhoneNumber={setPhoneNumber}
-          contactName={contactName}
-          setContactName={setContactName}
-          userExt={user?.extension}
-          isConnected={isConnected}
-          onCall={onCall}
-        />
-
-        {!isConnected && (
-          <p className="text-xs text-muted-foreground text-center mt-1">
-            Connect AMI in Integration Settings
-          </p>
-        )}
-
-        {/* Recent Calls / Call History Card - Collapsible */}
-        <div className="mt-3">
-          <button
-            onClick={() => setShowCallHistory((prev) => !prev)}
-            className="w-full flex justify-between items-center px-3 py-1 bg-muted rounded hover:bg-muted/70 transition text-sm font-medium mb-1"
-            aria-expanded={showCallHistory}
-          >
-            <span>Recent Calls</span>
-            {showCallHistory ? (
-              <ChevronUp className="h-4 w-4" />
-            ) : (
-              <ChevronDown className="h-4 w-4" />
-            )}
-          </button>
-          {showCallHistory && (
-            <div className="pb-1">
-              <CallHistory calls={callRecords.slice(0, 5)} />
-            </div>
+        <CardContent className="space-y-1 px-3 py-2 !pt-0">
+          <UnifiedDialerAgentInfo user={user} />
+          {!user?.extension && (
+            <p className="text-destructive mt-1 text-xs text-center">
+              No extension assigned
+            </p>
           )}
-        </div>
-      </CardContent>
-    </Card>
+
+          {/* Active call status */}
+          {activeCall && (
+            <UnifiedDialerActiveCall activeCall={activeCall} />
+          )}
+
+          <UnifiedDialerPanelWrapper
+            phoneNumber={phoneNumber}
+            setPhoneNumber={setPhoneNumber}
+            contactName={contactName}
+            setContactName={setContactName}
+            userExt={user?.extension}
+            isConnected={isConnected}
+            onCall={onCall}
+          />
+
+          {!isConnected && (
+            <p className="text-xs text-muted-foreground text-center mt-1">
+              Connect AMI in Integration Settings
+            </p>
+          )}
+        </CardContent>
+      </Card>
+      
+      {/* Recent Calls Card */}
+      <Card className="w-full max-w-md">
+        <Collapsible
+          open={showCallHistory}
+          onOpenChange={setShowCallHistory}
+        >
+          <CardHeader className="p-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Clock className="h-4 w-4" />
+                Recent Calls
+              </CardTitle>
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" size="sm" className="w-9 p-0 [&[data-state=open]>svg]:rotate-180">
+                  <ChevronDown className="h-4 w-4 transition-transform duration-200" />
+                  <span className="sr-only">Toggle</span>
+                </Button>
+              </CollapsibleTrigger>
+            </div>
+          </CardHeader>
+          <CollapsibleContent>
+            <CardContent className="p-3 pt-0">
+              <CallHistory calls={callRecords.slice(0, 5)} />
+            </CardContent>
+          </CollapsibleContent>
+        </Collapsible>
+      </Card>
+    </div>
   );
 };
 
