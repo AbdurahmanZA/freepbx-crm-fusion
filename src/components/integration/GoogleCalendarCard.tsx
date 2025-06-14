@@ -20,13 +20,15 @@ interface GoogleCalendarCardProps {
   onConfigUpdate: (field: string, value: any) => void;
   onTestConnection: () => Promise<boolean>;
   connectionStatus: 'connected' | 'disconnected' | 'testing';
+  showClientIdInput?: boolean;
 }
 
 const GoogleCalendarCard = ({
   config, 
   onConfigUpdate, 
   onTestConnection, 
-  connectionStatus 
+  connectionStatus,
+  showClientIdInput = true
 }: GoogleCalendarCardProps) => {
   const { toast } = useToast();
 
@@ -51,8 +53,8 @@ const GoogleCalendarCard = ({
   const handleConnectGoogle = () => {
     if (!config.clientId) {
       toast({
-        title: "Client ID Missing",
-        description: "Please enter your Google Client ID to connect your account.",
+        title: "Configuration Missing",
+        description: "Google Calendar integration has not been configured by an administrator.",
         variant: "destructive"
       });
       return;
@@ -66,7 +68,7 @@ const GoogleCalendarCard = ({
     authUrl.searchParams.set("client_id", config.clientId);
     authUrl.searchParams.set("redirect_uri", redirectUri);
     authUrl.searchParams.set("response_type", "token");
-    authUrl.searchParams.set("scope", "https://www.googleapis.com/auth/calendar");
+    authUrl.search_params.set("scope", "https://www.googleapis.com/auth/calendar");
     authUrl.searchParams.set("include_granted_scopes", "true");
     authUrl.searchParams.set("prompt", "consent select_account");
     
@@ -131,18 +133,20 @@ const GoogleCalendarCard = ({
 
         {config.enabled && (
           <>
-            <div className="space-y-2">
-              <Label htmlFor="google-client-id">Google Client ID</Label>
-              <Input
-                id="google-client-id"
-                value={config.clientId || ''}
-                onChange={(e) => onConfigUpdate('clientId', e.target.value)}
-                placeholder="Enter your Google OAuth Client ID"
-              />
-               <p className="text-xs text-muted-foreground">
-                You can get this from your project in the Google Cloud Console.
-              </p>
-            </div>
+            {showClientIdInput && (
+              <div className="space-y-2">
+                <Label htmlFor="google-client-id">Google Client ID</Label>
+                <Input
+                  id="google-client-id"
+                  value={config.clientId || ''}
+                  onChange={(e) => onConfigUpdate('clientId', e.target.value)}
+                  placeholder="Enter your Google OAuth Client ID"
+                />
+                 <p className="text-xs text-muted-foreground">
+                  You can get this from your project in the Google Cloud Console.
+                </p>
+              </div>
+            )}
 
             <div className="flex flex-col gap-2">
               <Button

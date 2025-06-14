@@ -209,6 +209,7 @@ const CallbackCalendar = ({ userRole }: CallbackCalendarProps) => {
         onConfigUpdate={handleGoogleCalendarConfigUpdate}
         onTestConnection={handleTestGoogleCalendarConnection}
         connectionStatus={connectionStatus}
+        showClientIdInput={false}
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
