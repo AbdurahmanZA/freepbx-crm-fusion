@@ -149,7 +149,7 @@ const IndexPage = () => {
         )}
       </Tabs>
 
-      {/* Floating Unified Dialer - compact floating menu */}
+      {/* Floating Unified Dialer - collapsible button window */}
       <div className="fixed bottom-4 right-4 z-50">
         {/* Floating Toggle Button */}
         {!showUnifiedDialer && (
@@ -166,7 +166,7 @@ const IndexPage = () => {
 
         {/* Expanded Dialer Panel */}
         {showUnifiedDialer && (
-          <div className="bg-background border rounded-lg shadow-xl w-[400px] max-h-[600px] overflow-y-auto">
+          <div className="bg-background border rounded-lg shadow-xl w-[600px] max-h-[700px] overflow-y-auto">
             {/* Header with close button */}
             <div className="flex items-center justify-between p-3 border-b bg-muted/30 sticky top-0 z-10">
               <h3 className="font-semibold text-sm">Unified Dialer</h3>
@@ -181,20 +181,21 @@ const IndexPage = () => {
                 </svg>
               </Button>
             </div>
-            {/* Dialer Content */}
-            <div className="p-3 space-y-4">
-              <UnifiedDialer disabled={false} onCallInitiated={() => { }} />
+            {/* Content */}
+            <div className="p-4 space-y-4">
+              {/* Dialer on top */}
+              <UnifiedDialer disabled={false} onCallInitiated={() => {}} />
               
-              {/* Recent Calls Card */}
-              <Card className="w-full">
-                <CardHeader className="p-3">
+              {/* Recent Calls below */}
+              <Card>
+                <CardHeader className="pb-3">
                   <CardTitle className="text-base flex items-center gap-2">
                     <Clock className="h-4 w-4" />
                     Recent Calls
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="p-3 pt-0">
-                  <CallHistory calls={callRecords.slice(0, 5)} />
+                <CardContent>
+                  <CallHistory calls={callRecords.slice(0, 8)} />
                 </CardContent>
               </Card>
             </div>

@@ -277,10 +277,10 @@ const UnifiedDialer = ({ onCallInitiated, disabled }: UnifiedDialerProps) => {
   }, [setPhoneNumber, setContactName, onCall, toast]);
 
   return (
-    <Card className="h-fit shadow-sm border flex flex-col min-w-[275px] w-full">
+    <Card className="h-fit shadow-sm border flex flex-col w-full">
       <UnifiedDialerHeader isConnected={isConnected} />
 
-      <CardContent className="space-y-1 px-3 py-2 !pt-0">
+      <CardContent className="space-y-3 px-4 py-3 !pt-0">
         <UnifiedDialerAgentInfo user={user} />
         {!user?.extension && (
           <p className="text-destructive mt-1 text-xs text-center">
@@ -304,7 +304,7 @@ const UnifiedDialer = ({ onCallInitiated, disabled }: UnifiedDialerProps) => {
         />
 
         {!isConnected && (
-          <p className="text-xs text-muted-foreground text-center mt-1">
+          <p className="text-xs text-muted-foreground text-center mt-2">
             Connect AMI in Integration Settings
           </p>
         )}
