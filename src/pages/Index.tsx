@@ -36,7 +36,7 @@ const IndexPage = () => {
   return (
     <div className="space-y-8">
       {/* --- Database Management always at the top of the dashboard --- */}
-      <DatabaseManagementCard />
+      <DatabaseManagementCard userRole={user.role} />
 
       <div className="mb-8">
         <h1 className="text-3xl font-bold tracking-tight">

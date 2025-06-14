@@ -62,8 +62,9 @@ const DatabaseManagementCard = ({ userRole }) => {
       const reader = new FileReader();
       reader.onload = (e) => {
         try {
+          // Fix: Cast content to string before parsing!
           const content = e.target.result;
-          const data = JSON.parse(content);
+          const data = JSON.parse(content as string);
           localStorage.setItem('leads', JSON.stringify(data));
           alert('Leads imported successfully!');
         } catch (error) {
