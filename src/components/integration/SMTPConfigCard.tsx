@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,7 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Mail, TestTube, Check, X, Eye, EyeOff } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
+import { Mail, TestTube, Check, X, Eye, EyeOff, Clock, Send, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface SMTPConfig {
@@ -18,6 +19,16 @@ interface SMTPConfig {
   encryption: string;
   fromEmail: string;
   fromName: string;
+}
+
+interface EmailLog {
+  id: string;
+  timestamp: string;
+  to: string;
+  subject: string;
+  status: 'sent' | 'failed' | 'pending';
+  template?: string;
+  errorMessage?: string;
 }
 
 interface SMTPConfigCardProps {
@@ -35,6 +46,35 @@ const SMTPConfigCard = ({
 }: SMTPConfigCardProps) => {
   const { toast } = useToast();
   const [showPassword, setShowPassword] = useState(false);
+  
+  // Mock email logs - in a real app, this would come from your backend
+  const [emailLogs] = useState<EmailLog[]>([
+    {
+      id: '1',
+      timestamp: new Date().toISOString(),
+      to: 'customer@example.com',
+      subject: 'Please Complete Your Information',
+      status: 'sent',
+      template: 'Customer Information Form'
+    },
+    {
+      id: '2',
+      timestamp: new Date(Date.now() - 300000).toISOString(),
+      to: 'lead@company.com',
+      subject: 'Your Quote Request - Next Steps',
+      status: 'sent',
+      template: 'Quote Request Follow-up'
+    },
+    {
+      id: '3',
+      timestamp: new Date(Date.now() - 600000).toISOString(),
+      to: 'invalid@email',
+      subject: 'Welcome! Complete Your Service Registration',
+      status: 'failed',
+      template: 'New Service Sign Up',
+      errorMessage: 'Invalid email address format'
+    }
+  ]);
 
   const handleTestConnection = async () => {
     try {
@@ -74,6 +114,23 @@ const SMTPConfigCard = ({
       default:
         return 'Disconnected';
     }
+  };
+
+  const getEmailStatusBadge = (status: EmailLog['status']) => {
+    switch (status) {
+      case 'sent':
+        return <Badge variant="outline" className="text-green-700 bg-green-50 border-green-200"><Check className="h-3 w-3 mr-1" />Sent</Badge>;
+      case 'failed':
+        return <Badge variant="outline" className="text-red-700 bg-red-50 border-red-200"><X className="h-3 w-3 mr-1" />Failed</Badge>;
+      case 'pending':
+        return <Badge variant="outline" className="text-yellow-700 bg-yellow-50 border-yellow-200"><Clock className="h-3 w-3 mr-1" />Pending</Badge>;
+      default:
+        return null;
+    }
+  };
+
+  const formatTimestamp = (timestamp: string) => {
+    return new Date(timestamp).toLocaleString();
   };
 
   return (
@@ -213,6 +270,54 @@ const SMTPConfigCard = ({
                 <strong>Note:</strong> For Gmail, use an App Password instead of your regular password. 
                 Enable 2-factor authentication and generate an App Password in your Google Account settings.
               </p>
+            </div>
+
+            {/* Email Sending Logs Section */}
+            <Separator />
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Send className="h-4 w-4" />
+                <Label className="text-base font-medium">Email Sending Logs</Label>
+              </div>
+              
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {emailLogs.length === 0 ? (
+                  <div className="text-center py-4 text-gray-500 text-sm">
+                    No emails sent yet. Email logs will appear here when templates are sent.
+                  </div>
+                ) : (
+                  emailLogs.map((log) => (
+                    <div key={log.id} className="border rounded-lg p-3 bg-gray-50">
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            {getEmailStatusBadge(log.status)}
+                            <span className="text-xs text-gray-500">
+                              {formatTimestamp(log.timestamp)}
+                            </span>
+                          </div>
+                          <p className="font-medium text-sm truncate">{log.subject}</p>
+                          <p className="text-xs text-gray-600">To: {log.to}</p>
+                          {log.template && (
+                            <p className="text-xs text-blue-600">Template: {log.template}</p>
+                          )}
+                        </div>
+                      </div>
+                      
+                      {log.status === 'failed' && log.errorMessage && (
+                        <div className="flex items-center gap-1 mt-2 p-2 bg-red-50 border border-red-200 rounded text-xs text-red-700">
+                          <AlertCircle className="h-3 w-3" />
+                          <span>{log.errorMessage}</span>
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+              
+              <div className="text-xs text-gray-500 text-center">
+                Showing last 10 email sending attempts. Logs are refreshed in real-time.
+              </div>
             </div>
           </>
         )}
