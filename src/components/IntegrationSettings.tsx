@@ -13,7 +13,7 @@ import GoogleCalendarCard from "./integration/GoogleCalendarCard";
 import SupabaseConfigCard from "./integration/SupabaseConfigCard";
 import SMTPConfigCard from "./integration/SMTPConfigCard";
 import EmailTemplateCard from "./integration/EmailTemplateCard";
-import ThemePicker from "./ThemePicker";
+import { ThemePicker } from "./ThemePicker";
 
 interface ConnectionStatus {
   amiBridge: 'connected' | 'disconnected' | 'testing';

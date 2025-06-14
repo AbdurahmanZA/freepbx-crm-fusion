@@ -109,7 +109,7 @@ const GoogleCalendarCard = ({
           <>
             <div className="flex flex-col gap-2">
               <Button
-                variant="accent"
+                variant="secondary"
                 size="sm"
                 className="w-fit flex items-center gap-2"
                 onClick={handleConnectGoogle}
