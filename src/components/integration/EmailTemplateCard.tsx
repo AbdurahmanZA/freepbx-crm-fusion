@@ -14,7 +14,7 @@ interface EmailTemplate {
   name: string;
   subject: string;
   body: string;
-  type: 'form-link' | 'quote-request' | 'follow-up' | 'custom';
+  type: 'form-link' | 'quote-request' | 'follow-up' | 'service-signup' | 'details-update' | 'invoice-statement' | 'custom';
 }
 
 interface EmailTemplateCardProps {
@@ -60,6 +60,71 @@ We look forward to working with you!
 Best regards,
 {{companyName}}`,
       type: 'quote-request'
+    },
+    {
+      id: '3',
+      name: 'New Service Sign Up',
+      subject: 'Welcome! Complete Your Service Registration',
+      body: `Dear {{customerName}},
+
+Welcome to {{companyName}}! We're excited to have you as a new customer.
+
+To complete your service registration and get started, please fill out the form below:
+
+{{formLink}}
+
+Our team will review your information and contact you within 24 hours to finalize your service setup.
+
+If you have any questions, feel free to reach out to us at {{phone}} or {{email}}.
+
+Best regards,
+{{companyName}} Team`,
+      type: 'service-signup'
+    },
+    {
+      id: '4',
+      name: 'Details Update Form',
+      subject: 'Please Update Your Account Information',
+      body: `Dear {{customerName}},
+
+We need to update your account information to ensure uninterrupted service.
+
+Please take a moment to review and update your details using the secure form below:
+
+{{formLink}}
+
+This will only take a few minutes and helps us serve you better.
+
+Thank you for your prompt attention to this matter.
+
+Best regards,
+{{companyName}} Customer Service`,
+      type: 'details-update'
+    },
+    {
+      id: '5',
+      name: 'Latest Invoice and Statement Balance',
+      subject: 'Your Latest Invoice and Account Statement',
+      body: `Dear {{customerName}},
+
+Your latest invoice and account statement are now available for review.
+
+Please access your account information and current balance using the secure link below:
+
+{{formLink}}
+
+Current Account Summary:
+- Account Number: {{accountNumber}}
+- Statement Date: {{statementDate}}
+- Total Balance: {{totalBalance}}
+
+If you have any questions about your statement or need assistance with payment options, please contact us at {{phone}} or {{email}}.
+
+Thank you for choosing {{companyName}}.
+
+Best regards,
+{{companyName}} Billing Department`,
+      type: 'invoice-statement'
     }
   ];
 
@@ -165,7 +230,7 @@ Best regards,
                       size="sm" 
                       variant="outline" 
                       onClick={() => handleDeleteTemplate(template.id)}
-                      disabled={template.id === '1' || template.id === '2'}
+                      disabled={template.id === '1' || template.id === '2' || template.id === '3' || template.id === '4' || template.id === '5'}
                     >
                       <Trash2 className="h-3 w-3" />
                     </Button>
@@ -197,6 +262,9 @@ Best regards,
                     <SelectItem value="form-link">Form Link</SelectItem>
                     <SelectItem value="quote-request">Quote Request</SelectItem>
                     <SelectItem value="follow-up">Follow-up</SelectItem>
+                    <SelectItem value="service-signup">Service Sign Up</SelectItem>
+                    <SelectItem value="details-update">Details Update</SelectItem>
+                    <SelectItem value="invoice-statement">Invoice Statement</SelectItem>
                     <SelectItem value="custom">Custom</SelectItem>
                   </SelectContent>
                 </Select>
@@ -218,7 +286,7 @@ Best regards,
                   id="template-body"
                   value={editForm.body || ''}
                   onChange={(e) => setEditForm(prev => ({...prev, body: e.target.value}))}
-                  placeholder="Email content... Use {{customerName}}, {{formLink}}, {{companyName}} for variables"
+                  placeholder="Email content... Use template variables like {{customerName}}, {{formLink}}, etc."
                   rows={6}
                 />
               </div>
@@ -238,7 +306,7 @@ Best regards,
 
         <div className="p-3 bg-yellow-50 rounded-lg">
           <p className="text-sm text-yellow-700">
-            <strong>Available Variables:</strong> {{customerName}}, {{formLink}}, {{companyName}}, {{phone}}, {{email}}
+            <strong>Available Variables:</strong> {`{{customerName}}, {{formLink}}, {{companyName}}, {{phone}}, {{email}}, {{accountNumber}}, {{statementDate}}, {{totalBalance}}`}
           </p>
         </div>
       </CardContent>

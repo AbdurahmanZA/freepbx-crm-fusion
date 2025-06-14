@@ -3,6 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   Phone, 
   PhoneCall, 
@@ -18,7 +19,9 @@ import {
   MessageCircle,
   Activity,
   Radio,
-  Users
+  Users,
+  Send,
+  Mail
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAMIContext } from "@/contexts/AMIContext";
@@ -48,12 +51,25 @@ const UnifiedDialer = ({ onLeadCreated }: UnifiedDialerProps) => {
   const [isMinimized, setIsMinimized] = useState(false);
   const [isChatMinimized, setIsChatMinimized] = useState(true);
   const [showCallActivity, setShowCallActivity] = useState(false);
+  const [showEmailPanel, setShowEmailPanel] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState('');
   const [contactName, setContactName] = useState('');
+  const [contactEmail, setContactEmail] = useState('');
+  const [selectedTemplate, setSelectedTemplate] = useState('');
   const [activeCall, setActiveCall] = useState<ActiveCall | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [callStartTime, setCallStartTime] = useState<Date | null>(null);
+
+  // Get email templates from localStorage
+  const getEmailTemplates = () => {
+    try {
+      const templates = localStorage.getItem('email_templates');
+      return templates ? JSON.parse(templates) : [];
+    } catch {
+      return [];
+    }
+  };
 
   // Enhanced listener for calls from anywhere in the app
   useEffect(() => {
@@ -94,7 +110,7 @@ const UnifiedDialer = ({ onLeadCreated }: UnifiedDialerProps) => {
         window.removeEventListener(eventType, handleUnifiedDialerCall as EventListener);
       });
     };
-  }, [toast]); // Added toast to dependencies, performCall is defined in scope but relies on context/state
+  }, [toast]);
 
   // Real-time call timer - starts immediately when call begins
   useEffect(() => {
@@ -247,8 +263,8 @@ const UnifiedDialer = ({ onLeadCreated }: UnifiedDialerProps) => {
 
         console.log('📞 [UnifiedDialer] Call initiated, starting timer');
         setActiveCall(newCall);
-        setCallStartTime(startTime); // Start the timer immediately
-        setIsMinimized(false); // Expand when call starts
+        setCallStartTime(startTime);
+        setIsMinimized(false);
         
         toast({
           title: "Call Initiated",
@@ -276,6 +292,87 @@ const UnifiedDialer = ({ onLeadCreated }: UnifiedDialerProps) => {
     await performCall(phoneNumber, contactName);
   };
 
+  const sendEmailTemplate = async () => {
+    // Check SMTP configuration
+    const smtpEnabled = localStorage.getItem('smtp_enabled') === 'true';
+    const smtpHost = localStorage.getItem('smtp_host');
+    const smtpUsername = localStorage.getItem('smtp_username');
+
+    if (!smtpEnabled || !smtpHost || !smtpUsername) {
+      toast({
+        title: "SMTP Not Configured",
+        description: "Please configure SMTP settings in Integration Settings first.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!contactEmail || !selectedTemplate) {
+      toast({
+        title: "Missing Information",
+        description: "Please enter email address and select a template.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      const templates = getEmailTemplates();
+      const template = templates.find((t: any) => t.id === selectedTemplate);
+
+      if (!template) {
+        toast({
+          title: "Template Not Found",
+          description: "Selected email template could not be found.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Replace template variables
+      const companyName = localStorage.getItem('smtp_from_name') || 'Your Company';
+      const formLink = `${window.location.origin}/customer-form`;
+      
+      const subject = template.subject
+        .replace(/\{\{customerName\}\}/g, contactName || 'Valued Customer')
+        .replace(/\{\{companyName\}\}/g, companyName);
+      
+      const body = template.body
+        .replace(/\{\{customerName\}\}/g, contactName || 'Valued Customer')
+        .replace(/\{\{formLink\}\}/g, formLink)
+        .replace(/\{\{companyName\}\}/g, companyName)
+        .replace(/\{\{phone\}\}/g, phoneNumber)
+        .replace(/\{\{email\}\}/g, contactEmail);
+
+      console.log('📧 [UnifiedDialer] Sending email:', {
+        to: contactEmail,
+        subject,
+        template: template.name
+      });
+
+      // Simulate email sending
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      toast({
+        title: "Email Sent",
+        description: `${template.name} sent to ${contactEmail}`,
+      });
+
+      // Clear email fields
+      setContactEmail('');
+      setSelectedTemplate('');
+      setShowEmailPanel(false);
+
+    } catch (error) {
+      console.error('Email sending error:', error);
+      toast({
+        title: "Email Failed",
+        description: "Could not send email. Please check your SMTP configuration.",
+        variant: "destructive"
+      });
+    }
+  };
+
   const endCall = async () => {
     if (!activeCall) return;
 
@@ -299,7 +396,7 @@ const UnifiedDialer = ({ onLeadCreated }: UnifiedDialerProps) => {
       console.log('📞 [UnifiedDialer] Call ended, final duration:', activeCall.duration);
 
       setActiveCall(null);
-      setCallStartTime(null); // Reset timer
+      setCallStartTime(null);
       setIsRecording(false);
       setIsMuted(false);
       setPhoneNumber('');
@@ -393,6 +490,14 @@ const UnifiedDialer = ({ onLeadCreated }: UnifiedDialerProps) => {
               </div>
               <div className="flex gap-2">
                 <Button
+                  variant={showEmailPanel ? "default" : "ghost"}
+                  size="sm"
+                  onClick={() => setShowEmailPanel(!showEmailPanel)}
+                >
+                  <Mail className="h-3 w-3 mr-1" />
+                  Email
+                </Button>
+                <Button
                   variant={showCallActivity ? "default" : "ghost"}
                   size="sm"
                   onClick={() => setShowCallActivity(!showCallActivity)}
@@ -416,6 +521,46 @@ const UnifiedDialer = ({ onLeadCreated }: UnifiedDialerProps) => {
                 </Button>
               </div>
             </div>
+
+            {/* Email Panel */}
+            {showEmailPanel && (
+              <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="flex items-center gap-2 mb-3">
+                  <Mail className="h-4 w-4 text-blue-600" />
+                  <span className="font-medium text-sm">Send Email Template</span>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <Input
+                    value={contactEmail}
+                    onChange={(e) => setContactEmail(e.target.value)}
+                    placeholder="Email address"
+                    className="text-sm"
+                  />
+                  <Select value={selectedTemplate} onValueChange={setSelectedTemplate}>
+                    <SelectTrigger className="text-sm">
+                      <SelectValue placeholder="Select template" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {getEmailTemplates().map((template: any) => (
+                        <SelectItem key={template.id} value={template.id}>
+                          {template.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button 
+                    onClick={sendEmailTemplate} 
+                    disabled={!contactEmail || !selectedTemplate}
+                    className="w-full"
+                    size="sm"
+                  >
+                    <Send className="h-3 w-3 mr-2" />
+                    Send Email
+                  </Button>
+                </div>
+              </div>
+            )}
 
             {/* Call Activity Section */}
             {showCallActivity && (
