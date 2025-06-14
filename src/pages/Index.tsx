@@ -35,8 +35,7 @@ const IndexPage = () => {
 
   return (
     <div className="space-y-8">
-      {/* --- Database Management always at the top of the dashboard --- */}
-      <DatabaseManagementCard userRole={user.role} />
+      {/* Removed DatabaseManagementCard from here */}
 
       <div className="mb-8">
         <h1 className="text-3xl font-bold tracking-tight">
@@ -78,6 +77,8 @@ const IndexPage = () => {
           </TabsContent>
 
           <TabsContent value="integrations">
+            {/* Database Management now ONLY appears here */}
+            <DatabaseManagementCard userRole={user.role} />
             <IntegrationSettings />
           </TabsContent>
 
