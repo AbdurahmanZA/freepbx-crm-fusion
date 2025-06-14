@@ -20,6 +20,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { databaseService, BackupMetadata } from "@/services/databaseService";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const DatabaseManagementCard = () => {
   const { toast } = useToast();
@@ -27,6 +28,7 @@ const DatabaseManagementCard = () => {
   const [backups, setBackups] = useState<BackupMetadata[]>([]);
   const [loading, setLoading] = useState(false);
   const [backupDescription, setBackupDescription] = useState('');
+  const [showWipeLeadsDialog, setShowWipeLeadsDialog] = useState(false);
 
   // Load backups on component mount
   useState(() => {
@@ -177,6 +179,68 @@ const DatabaseManagementCard = () => {
   // Simple flag for Agent 
   const isAgent = user?.role.toLowerCase() === "agent";
 
+  // "Maintenance": Remove duplicate users/call records for demo maintenance
+  const handleMaintenance = () => {
+    try {
+      setLoading(true);
+
+      // Remove duplicate users
+      const users = JSON.parse(localStorage.getItem('crm_users') || '[]');
+      const uniqueUsers = Array.isArray(users)
+        ? Object.values(users.reduce((acc, cur) => {
+            acc[cur.id] = cur;
+            return acc;
+          }, {} as Record<string, any>))
+        : [];
+      localStorage.setItem('crm_users', JSON.stringify(uniqueUsers));
+
+      // Remove duplicate call records
+      const callRecords = JSON.parse(localStorage.getItem('call_records') || '[]');
+      const uniqueCallRecords = Array.isArray(callRecords)
+        ? Object.values(callRecords.reduce((acc, cur) => {
+            acc[cur.id] = cur;
+            return acc;
+          }, {} as Record<string, any>))
+        : [];
+      localStorage.setItem('call_records', JSON.stringify(uniqueCallRecords));
+
+      // You can add more cleanup logic here!
+      toast({
+        title: "Maintenance Complete",
+        description: "Duplicates have been cleaned. Check system health for more details.",
+      });
+    } catch (error) {
+      toast({
+        title: "Maintenance Error",
+        description: "Failed to complete maintenance.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Wipe Leads logic
+  const handleWipeLeads = () => {
+    try {
+      setLoading(true);
+      localStorage.removeItem("crm_leads");
+      toast({
+        title: "Leads Wiped",
+        description: "All leads have been deleted from the system.",
+      });
+      setShowWipeLeadsDialog(false);
+    } catch (error) {
+      toast({
+        title: "Wipe Failed",
+        description: "Could not wipe leads.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -243,7 +307,31 @@ const DatabaseManagementCard = () => {
         {/* Backup Section */}
         {!isAgent && (
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Backup & Restore</h3>
+            <h3 className="text-lg font-semibold flex items-center gap-2">
+              Backup & Restore
+              <Button 
+                size="sm" 
+                variant="outline"
+                onClick={handleMaintenance}
+                disabled={loading}
+                className="flex items-center gap-1"
+                title="Perform maintenance (cleanup duplicates)"
+              >
+                <span>Maintenance</span>
+                <HardDrive className="h-4 w-4" />
+              </Button>
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={() => setShowWipeLeadsDialog(true)}
+                disabled={loading}
+                className="flex items-center gap-1"
+                title="Delete all leads from system"
+              >
+                <span>Wipe Leads</span>
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </h3>
             
             <div className="space-y-2">
               <Label htmlFor="backup-description">Backup Description (Optional)</Label>
@@ -338,6 +426,35 @@ const DatabaseManagementCard = () => {
             )}
           </div>
         )}
+
+        {/* Wipe Leads Confirmation Dialog */}
+        <Dialog open={showWipeLeadsDialog} onOpenChange={setShowWipeLeadsDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Confirm Delete All Leads</DialogTitle>
+            </DialogHeader>
+            <div className="py-4">
+              Are you sure you want to <span className="font-semibold text-destructive">permanently delete all leads</span> from the system? This cannot be undone.
+            </div>
+            <DialogFooter>
+              <Button
+                onClick={() => setShowWipeLeadsDialog(false)}
+                variant="outline"
+                disabled={loading}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleWipeLeads}
+                variant="destructive"
+                disabled={loading}
+              >
+                Wipe Leads
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
       </CardContent>
     </Card>
   );
