@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,19 +14,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import AddCallbackDialog from "./AddCallbackDialog";
-
-interface Callback {
-  id: string;
-  leadName: string;
-  leadPhone: string;
-  leadCompany: string;
-  scheduledDate: Date;
-  scheduledTime: string;
-  assignedAgent: string;
-  notes: string;
-  priority: 'high' | 'medium' | 'low';
-  status: 'scheduled' | 'completed' | 'missed';
-}
+import { callbackService, Callback } from "@/services/callbackService";
 
 interface CallbackCalendarProps {
   userRole: string;
@@ -37,83 +24,104 @@ const CallbackCalendar = ({ userRole }: CallbackCalendarProps) => {
   const { toast } = useToast();
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [showAddDialog, setShowAddDialog] = useState(false);
-  const [callbacks, setCallbacks] = useState<Callback[]>([
-    {
-      id: '1',
-      leadName: 'Sarah Johnson',
-      leadPhone: '+1-555-0456',
-      leadCompany: 'Tech Solutions',
-      scheduledDate: new Date(),
-      scheduledTime: '10:30 AM',
-      assignedAgent: 'John Parker',
-      notes: 'Follow up on pricing discussion',
-      priority: 'high',
-      status: 'scheduled'
-    },
-    {
-      id: '2',
-      leadName: 'Mike Davis',
-      leadPhone: '+1-555-0789',
-      leadCompany: 'Global Systems',
-      scheduledDate: new Date(Date.now() + 86400000), // Tomorrow
-      scheduledTime: '2:00 PM',
-      assignedAgent: 'Sarah Wilson',
-      notes: 'Send proposal after call',
-      priority: 'medium',
-      status: 'scheduled'
+  const [callbacks, setCallbacks] = useState<Callback[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Load callbacks on component mount
+  useEffect(() => {
+    loadCallbacks();
+  }, []);
+
+  const loadCallbacks = () => {
+    try {
+      const loadedCallbacks = callbackService.getAllCallbacks();
+      setCallbacks(loadedCallbacks);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to load callbacks",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
     }
-  ]);
+  };
 
   const getCallbacksForDate = (date: Date) => {
-    return callbacks.filter(callback => 
-      format(callback.scheduledDate, 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd')
-    );
+    return callbackService.getCallbacksForDate(date);
   };
 
   const getDatesWithCallbacks = () => {
     return callbacks.map(callback => callback.scheduledDate);
   };
 
-  const handleAddCallback = (callbackData: Omit<Callback, 'id' | 'status'>) => {
-    const newCallback: Callback = {
-      ...callbackData,
-      id: `callback_${Date.now()}`,
-      status: 'scheduled'
-    };
+  const handleAddCallback = (callbackData: Omit<Callback, 'id' | 'status' | 'createdAt' | 'updatedAt'>) => {
+    try {
+      const newCallback = callbackService.saveCallback(callbackData);
+      setCallbacks(prev => [...prev, newCallback]);
+      
+      toast({
+        title: "Callback Scheduled",
+        description: `Callback for ${newCallback.leadName} scheduled for ${format(newCallback.scheduledDate, 'PPP')} at ${newCallback.scheduledTime}`,
+      });
 
-    setCallbacks(prev => [...prev, newCallback]);
-    
-    toast({
-      title: "Callback Scheduled",
-      description: `Callback for ${newCallback.leadName} scheduled for ${format(newCallback.scheduledDate, 'PPP')} at ${newCallback.scheduledTime}`,
-    });
-
-    // Send Discord notification if available
-    if ((window as any).sendDiscordNotification) {
-      (window as any).sendDiscordNotification(
-        newCallback.leadName,
-        'callback scheduled',
-        `Callback scheduled for ${format(newCallback.scheduledDate, 'PPP')} at ${newCallback.scheduledTime} - assigned to ${newCallback.assignedAgent}`
-      );
+      // Send Discord notification if available
+      if ((window as any).sendDiscordNotification) {
+        (window as any).sendDiscordNotification(
+          newCallback.leadName,
+          'callback scheduled',
+          `Callback scheduled for ${format(newCallback.scheduledDate, 'PPP')} at ${newCallback.scheduledTime} - assigned to ${newCallback.assignedAgent}`
+        );
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to save callback",
+        variant: "destructive"
+      });
     }
   };
 
   const markCallbackComplete = (callbackId: string) => {
-    setCallbacks(prev => 
-      prev.map(callback => 
-        callback.id === callbackId 
-          ? { ...callback, status: 'completed' as const }
-          : callback
-      )
-    );
+    try {
+      const updated = callbackService.updateCallback(callbackId, { status: 'completed' });
+      if (updated) {
+        setCallbacks(prev => 
+          prev.map(callback => 
+            callback.id === callbackId ? updated : callback
+          )
+        );
 
-    const callback = callbacks.find(c => c.id === callbackId);
-    if (callback) {
+        toast({
+          title: "Callback Completed",
+          description: `Callback for ${updated.leadName} marked as completed`,
+        });
+      }
+    } catch (error) {
       toast({
-        title: "Callback Completed",
-        description: `Callback for ${callback.leadName} marked as completed`,
+        title: "Error",
+        description: "Failed to update callback",
+        variant: "destructive"
       });
     }
+  };
+
+  const handleCallLead = (callback: Callback) => {
+    // Dispatch event to unified dialer
+    const callEvent = new CustomEvent('unifiedDialerCall', {
+      detail: {
+        name: callback.leadName,
+        phone: callback.leadPhone,
+        leadId: callback.id,
+        source: 'callback_calendar'
+      }
+    });
+    window.dispatchEvent(callEvent);
+
+    toast({
+      title: "Initiating Call",
+      description: `Calling ${callback.leadName}...`,
+    });
   };
 
   const getPriorityColor = (priority: string) => {
@@ -135,6 +143,10 @@ const CallbackCalendar = ({ userRole }: CallbackCalendarProps) => {
   };
 
   const selectedDateCallbacks = getCallbacksForDate(selectedDate);
+
+  if (loading) {
+    return <div className="flex justify-center p-8">Loading callbacks...</div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -240,7 +252,12 @@ const CallbackCalendar = ({ userRole }: CallbackCalendarProps) => {
                         <div className="flex gap-2">
                           {callback.status === 'scheduled' && (
                             <>
-                              <Button size="sm" variant="outline" className="flex items-center gap-1">
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                className="flex items-center gap-1"
+                                onClick={() => handleCallLead(callback)}
+                              >
                                 <Phone className="h-3 w-3" />
                                 Call Now
                               </Button>

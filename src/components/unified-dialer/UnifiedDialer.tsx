@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -52,22 +51,47 @@ const UnifiedDialer = ({ onLeadCreated }: UnifiedDialerProps) => {
   const [isMuted, setIsMuted] = useState(false);
   const [callStartTime, setCallStartTime] = useState<Date | null>(null);
 
-  // Listen for calls from LeadManagement
+  // Enhanced listener for calls from anywhere in the app
   useEffect(() => {
     const handleUnifiedDialerCall = async (event: CustomEvent) => {
       const callData = event.detail;
-      console.log('📞 [UnifiedDialer] Received call request from LeadManagement:', callData);
+      console.log('📞 [UnifiedDialer] Received call request:', callData);
+      
+      // Expand dialer when call is requested
+      setIsMinimized(false);
       
       // Populate dialer fields
-      setPhoneNumber(callData.phone);
-      setContactName(callData.name);
+      setPhoneNumber(callData.phone || callData.phoneNumber || '');
+      setContactName(callData.name || callData.leadName || callData.contactName || '');
       
-      // Automatically initiate the call
-      await performCall(callData.phone, callData.name, callData.leadId);
+      // Show notification
+      toast({
+        title: "Call Request Received",
+        description: `Preparing to call ${callData.name || 'Unknown Contact'}`,
+      });
+      
+      // Auto-initiate call after a brief delay to show the UI update
+      setTimeout(async () => {
+        await performCall(
+          callData.phone || callData.phoneNumber, 
+          callData.name || callData.leadName || callData.contactName, 
+          callData.leadId || callData.id
+        );
+      }, 500);
     };
 
-    window.addEventListener('unifiedDialerCall', handleUnifiedDialerCall as EventListener);
-    return () => window.removeEventListener('unifiedDialerCall', handleUnifiedDialerCall as EventListener);
+    // Listen for multiple event types for better compatibility
+    const eventTypes = ['unifiedDialerCall', 'initiateCall', 'dialLead', 'callLead'];
+    
+    eventTypes.forEach(eventType => {
+      window.addEventListener(eventType, handleUnifiedDialerCall as EventListener);
+    });
+
+    return () => {
+      eventTypes.forEach(eventType => {
+        window.removeEventListener(eventType, handleUnifiedDialerCall as EventListener);
+      });
+    };
   }, []);
 
   // Real-time call timer - starts immediately when call begins
