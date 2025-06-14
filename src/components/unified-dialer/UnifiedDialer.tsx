@@ -38,7 +38,7 @@ interface UnifiedDialerProps {
 
 const UnifiedDialer = ({ onCallInitiated, disabled, initialData }: UnifiedDialerProps) => {
   const { toast } = useToast();
-  const { isConnected, originateCall, lastEvent, callEvents } = useAMIContext();
+  const { isConnected, originateCall, lastEvent } = useAMIContext();
   const { user } = useAuth();
   const [phoneNumber, setPhoneNumber] = useState("");
   const [contactName, setContactName] = useState("");
@@ -67,8 +67,6 @@ const UnifiedDialer = ({ onCallInitiated, disabled, initialData }: UnifiedDialer
   // This new useEffect populates the dialer when props are received
   useEffect(() => {
     if (initialData) {
-      console.log('📞 [UnifiedDialer] Received initialData prop:', initialData);
-      
       const phone = initialData.phoneNumber || "";
       const name = initialData.contactName || (initialData.leadData?.name) || "";
       const email = initialData.contactEmail || (initialData.leadData?.email) || "";
@@ -89,10 +87,6 @@ const UnifiedDialer = ({ onCallInitiated, disabled, initialData }: UnifiedDialer
 
     const userExtension = user?.extension;
     if (!userExtension) return;
-
-    console.log("📞 [UnifiedDialer] Processing AMI event:", lastEvent);
-    console.log("📞 [UnifiedDialer] Active call:", activeCall);
-    console.log("📞 [UnifiedDialer] User extension:", userExtension);
 
     // Check if this event is related to our user's extension
     const isUserChannel =
@@ -157,10 +151,6 @@ const UnifiedDialer = ({ onCallInitiated, disabled, initialData }: UnifiedDialer
     }
 
     if (shouldUpdate && newStatus !== activeCall.status) {
-      console.log(
-        `📞 [UnifiedDialer] Status change: ${activeCall.status} -> ${newStatus}`
-      );
-
       const updatedCall = {
         ...activeCall,
         status: newStatus,
@@ -216,7 +206,7 @@ const UnifiedDialer = ({ onCallInitiated, disabled, initialData }: UnifiedDialer
     }
 
     try {
-      console.log("Initiating real AMI call:", {
+      console.error("Initiating real AMI call:", {
         channel: `PJSIP/${user.extension}`,
         extension: phoneNumber,
         context: "from-internal",
@@ -286,79 +276,11 @@ const UnifiedDialer = ({ onCallInitiated, disabled, initialData }: UnifiedDialer
     if (matchedLead) {
       setContactName(matchedLead.name || name || "");
       setContactEmail(matchedLead.email || "");
-      console.log('📞 [UnifiedDialer] Found matching lead:', matchedLead);
     } else {
       setContactName(name || "");
       setContactEmail("");
     }
   };
-
-  // Enhanced event handler for "click to dial" from lead management
-  useEffect(() => {
-    const handleUnifiedDialerCall = (event: CustomEvent) => {
-      console.log('📞 [UnifiedDialer] Received call event:', event.detail);
-      
-      const detail = event.detail || {};
-      const phone = detail.phoneNumber || detail.phone;
-      const name = detail.contactName || detail.name || "";
-      const email = detail.contactEmail || "";
-      const leadData = detail.leadData;
-      
-      console.log('📞 [UnifiedDialer] Extracted data:', { phone, name, email, leadData });
-      
-      if (phone) {
-        console.log('📞 [UnifiedDialer] Setting values directly...');
-        
-        // Set phone number
-        setPhoneNumber(phone);
-        console.log('📞 [UnifiedDialer] Phone set to:', phone);
-        
-        // Set contact name - use leadData.name if available, fallback to name
-        const finalName = leadData?.name || name || "";
-        setContactName(finalName);
-        console.log('📞 [UnifiedDialer] Name set to:', finalName);
-        
-        // Set contact email - use leadData.email if available, fallback to email
-        const finalEmail = leadData?.email || email || "";
-        setContactEmail(finalEmail);
-        console.log('📞 [UnifiedDialer] Email set to:', finalEmail);
-        
-        // Auto-expand email panel if we have an email
-        if (finalEmail) {
-          setIsEmailExpanded(true);
-          console.log('📞 [UnifiedDialer] Auto-expanded email panel');
-        }
-        
-        // Show immediate feedback that values were received
-        toast({
-          title: "Lead Selected",
-          description: `Ready to call ${finalName || phone}. Dialer is populated and ready.`,
-        });
-        
-        console.log('📞 [UnifiedDialer] State update completed');
-        
-        // Log the state after a brief delay to confirm it's set
-        setTimeout(() => {
-          console.log('📞 [UnifiedDialer] Verification - current state:', {
-            phoneNumber: phone,
-            contactName: finalName,
-            contactEmail: finalEmail
-          });
-        }, 50);
-        
-      } else {
-        console.log('📞 [UnifiedDialer] No phone number in event detail');
-      }
-    };
-
-    console.log('📞 [UnifiedDialer] Setting up event listener...');
-    window.addEventListener("unifiedDialerCall", handleUnifiedDialerCall as EventListener);
-
-    return () => {
-      console.log('📞 [UnifiedDialer] Cleaning up event listener...');
-      window.removeEventListener("unifiedDialerCall", handleUnifiedDialerCall as EventListener);
-    };
-  }, []); // Empty dependency array to prevent re-creation
 
   // Email template functions
   const prepareEmailPreview = () => {
@@ -422,13 +344,6 @@ const UnifiedDialer = ({ onCallInitiated, disabled, initialData }: UnifiedDialer
     setIsEmailExpanded(false);
   };
 
-  // Debug current state - log every render
-  console.log('📞 [UnifiedDialer] Current render state:', {
-    phoneNumber,
-    contactName,
-    contactEmail
-  });
-
   return (
     <div className="space-y-2">
       <Card className="h-fit shadow-sm border flex flex-col w-full">
@@ -481,11 +396,6 @@ const UnifiedDialer = ({ onCallInitiated, disabled, initialData }: UnifiedDialer
               </div>
             </div>
           )}
-
-          {/* Debug info - will remove later */}
-          <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded">
-            Debug: Phone={phoneNumber}, Name={contactName}, Email={contactEmail}
-          </div>
 
           {/* Dialer Panel - Compact */}
           <div className="grid grid-cols-2 gap-2">

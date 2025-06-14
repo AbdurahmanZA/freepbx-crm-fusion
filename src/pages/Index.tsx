@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import LeadManagement from "@/components/LeadManagement";
@@ -75,7 +74,6 @@ const IndexPage = () => {
   // Auto-connect to AMI Bridge on login
   useEffect(() => {
     if (user && !isConnected) {
-      console.log('Auto-connecting to AMI Bridge on login...');
       connect();
     }
   }, [user, isConnected, connect]);
@@ -94,8 +92,6 @@ const IndexPage = () => {
   // Listen for dialer open requests from lead management
   useEffect(() => {
     const handleDialerRequest = (event: CustomEvent) => {
-      console.log('📞 [Index] Received dialer request:', event.detail);
-      
       if (event.detail?.autoOpenDrawer) {
         setDialerInitialData(event.detail); // Set data for the dialer
         setDrawerOpen(true);

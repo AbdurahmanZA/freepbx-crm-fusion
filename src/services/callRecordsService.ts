@@ -67,7 +67,6 @@ class CallRecordsService {
     this.records.unshift(newRecord);
     this.notifyListeners();
     
-    console.log('Call record added:', newRecord);
     return newRecord;
   }
 
@@ -79,7 +78,6 @@ class CallRecordsService {
     this.records[index] = { ...this.records[index], ...updates };
     this.notifyListeners();
     
-    console.log('Call record updated:', this.records[index]);
     return this.records[index];
   }
 
