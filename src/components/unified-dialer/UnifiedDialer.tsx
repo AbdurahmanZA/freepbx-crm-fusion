@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { 
   Phone, 
   PhoneCall, 
@@ -21,7 +22,9 @@ import {
   Radio,
   Users,
   Send,
-  Mail
+  Mail,
+  Eye,
+  X
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAMIContext } from "@/contexts/AMIContext";
@@ -51,11 +54,12 @@ const UnifiedDialer = ({ onLeadCreated }: UnifiedDialerProps) => {
   const [isMinimized, setIsMinimized] = useState(false);
   const [isChatMinimized, setIsChatMinimized] = useState(true);
   const [showCallActivity, setShowCallActivity] = useState(false);
-  const [showEmailPanel, setShowEmailPanel] = useState(false);
+  const [showEmailPreview, setShowEmailPreview] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState('');
   const [contactName, setContactName] = useState('');
   const [contactEmail, setContactEmail] = useState('');
   const [selectedTemplate, setSelectedTemplate] = useState('');
+  const [emailPreviewData, setEmailPreviewData] = useState<any>(null);
   const [activeCall, setActiveCall] = useState<ActiveCall | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
@@ -311,21 +315,44 @@ const UnifiedDialer = ({ onLeadCreated }: UnifiedDialerProps) => {
     await performCall(phoneNumber, contactName);
   };
 
-  const sendEmailTemplate = async () => {
-    // Check SMTP configuration
-    const smtpEnabled = localStorage.getItem('smtp_enabled') === 'true';
-    const smtpHost = localStorage.getItem('smtp_host');
-    const smtpUsername = localStorage.getItem('smtp_username');
+  const sendDiscordEmailNotification = async (emailData: any) => {
+    try {
+      const webhookUrl = localStorage.getItem('discord_webhook_url');
+      if (!webhookUrl) return;
 
-    if (!smtpEnabled || !smtpHost || !smtpUsername) {
-      toast({
-        title: "SMTP Not Configured",
-        description: "Please configure SMTP settings in Integration Settings first.",
-        variant: "destructive"
+      const currentUser = user?.name || localStorage.getItem('current_user') || 'Unknown User';
+      const timestamp = new Date().toLocaleString();
+
+      const discordPayload = {
+        embeds: [{
+          title: "📧 Email Sent from CRM",
+          color: 0x0099ff,
+          fields: [
+            { name: "👤 Sent by", value: currentUser, inline: true },
+            { name: "📧 To", value: emailData.to, inline: true },
+            { name: "📋 Template", value: emailData.templateName, inline: true },
+            { name: "📄 Subject", value: emailData.subject, inline: false },
+            { name: "👤 Contact", value: emailData.contactName || 'Unknown', inline: true },
+            { name: "📞 Phone", value: emailData.phone || 'N/A', inline: true },
+            { name: "🕒 Sent at", value: timestamp, inline: false }
+          ],
+          footer: { text: "CRM Email System" }
+        }]
+      };
+
+      await fetch(webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(discordPayload)
       });
-      return;
-    }
 
+      console.log('📧 Discord notification sent for email');
+    } catch (error) {
+      console.error('Failed to send Discord notification:', error);
+    }
+  };
+
+  const prepareEmailPreview = () => {
     if (!contactEmail || !selectedTemplate) {
       toast({
         title: "Missing Information",
@@ -348,7 +375,6 @@ const UnifiedDialer = ({ onLeadCreated }: UnifiedDialerProps) => {
         return;
       }
 
-      // Replace template variables
       const companyName = localStorage.getItem('smtp_from_name') || 'Your Company';
       const formLink = `${window.location.origin}/customer-form`;
       
@@ -363,24 +389,61 @@ const UnifiedDialer = ({ onLeadCreated }: UnifiedDialerProps) => {
         .replace(/\{\{phone\}\}/g, phoneNumber)
         .replace(/\{\{email\}\}/g, contactEmail);
 
-      console.log('📧 [UnifiedDialer] Sending email:', {
+      setEmailPreviewData({
         to: contactEmail,
         subject,
-        template: template.name
+        body,
+        templateName: template.name,
+        contactName,
+        phone: phoneNumber
       });
+
+      setShowEmailPreview(true);
+    } catch (error) {
+      console.error('Email preview error:', error);
+      toast({
+        title: "Preview Failed",
+        description: "Could not generate email preview.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const sendEmailTemplate = async () => {
+    if (!emailPreviewData) return;
+
+    const smtpEnabled = localStorage.getItem('smtp_enabled') === 'true';
+    const smtpHost = localStorage.getItem('smtp_host');
+    const smtpUsername = localStorage.getItem('smtp_username');
+
+    if (!smtpEnabled || !smtpHost || !smtpUsername) {
+      toast({
+        title: "SMTP Not Configured",
+        description: "Please configure SMTP settings in Integration Settings first.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      console.log('📧 [UnifiedDialer] Sending email:', emailPreviewData);
 
       // Simulate email sending
       await new Promise(resolve => setTimeout(resolve, 1000));
 
+      // Send Discord notification
+      await sendDiscordEmailNotification(emailPreviewData);
+
       toast({
         title: "Email Sent",
-        description: `${template.name} sent to ${contactEmail}`,
+        description: `${emailPreviewData.templateName} sent to ${emailPreviewData.to}`,
       });
 
-      // Clear email fields
+      // Clear email fields and close preview
       setContactEmail('');
       setSelectedTemplate('');
-      setShowEmailPanel(false);
+      setShowEmailPreview(false);
+      setEmailPreviewData(null);
 
     } catch (error) {
       console.error('Email sending error:', error);
@@ -509,14 +572,6 @@ const UnifiedDialer = ({ onLeadCreated }: UnifiedDialerProps) => {
               </div>
               <div className="flex gap-2">
                 <Button
-                  variant={showEmailPanel ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => setShowEmailPanel(!showEmailPanel)}
-                >
-                  <Mail className="h-3 w-3 mr-1" />
-                  Email
-                </Button>
-                <Button
                   variant={showCallActivity ? "default" : "ghost"}
                   size="sm"
                   onClick={() => setShowCallActivity(!showCallActivity)}
@@ -540,46 +595,6 @@ const UnifiedDialer = ({ onLeadCreated }: UnifiedDialerProps) => {
                 </Button>
               </div>
             </div>
-
-            {/* Email Panel */}
-            {showEmailPanel && (
-              <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                <div className="flex items-center gap-2 mb-3">
-                  <Mail className="h-4 w-4 text-blue-600" />
-                  <span className="font-medium text-sm">Send Email Template</span>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <Input
-                    value={contactEmail}
-                    onChange={(e) => setContactEmail(e.target.value)}
-                    placeholder="Email address"
-                    className="text-sm"
-                  />
-                  <Select value={selectedTemplate} onValueChange={setSelectedTemplate}>
-                    <SelectTrigger className="text-sm">
-                      <SelectValue placeholder="Select template" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {getEmailTemplates().map((template: any) => (
-                        <SelectItem key={template.id} value={template.id}>
-                          {template.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Button 
-                    onClick={sendEmailTemplate} 
-                    disabled={!contactEmail || !selectedTemplate}
-                    className="w-full"
-                    size="sm"
-                  >
-                    <Send className="h-3 w-3 mr-2" />
-                    Send Email
-                  </Button>
-                </div>
-              </div>
-            )}
 
             {/* Call Activity Section */}
             {showCallActivity && (
@@ -694,35 +709,88 @@ const UnifiedDialer = ({ onLeadCreated }: UnifiedDialerProps) => {
               </div>
             )}
 
-            {/* Dialer Interface */}
+            {/* Dialer Interface with Inline Email */}
             {!activeCall && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Input
-                    value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
-                    placeholder="Phone number"
-                    className="text-sm"
-                  />
+              <div className="space-y-4">
+                {/* Main dialer controls */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Input
+                      value={phoneNumber}
+                      onChange={(e) => setPhoneNumber(e.target.value)}
+                      placeholder="Phone number"
+                      className="text-sm"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Input
+                      value={contactName}
+                      onChange={(e) => setContactName(e.target.value)}
+                      placeholder="Contact name (optional)"
+                      className="text-sm"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Button 
+                      onClick={initiateCall} 
+                      disabled={!user?.extension || !phoneNumber || !isConnected}
+                      className="w-full"
+                      size="sm"
+                    >
+                      <PhoneCall className="h-3 w-3 mr-2" />
+                      {!isConnected ? 'AMI Not Connected' : !user?.extension ? 'No Extension' : 'Call'}
+                    </Button>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Input
-                    value={contactName}
-                    onChange={(e) => setContactName(e.target.value)}
-                    placeholder="Contact name (optional)"
-                    className="text-sm"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Button 
-                    onClick={initiateCall} 
-                    disabled={!user?.extension || !phoneNumber || !isConnected}
-                    className="w-full"
-                    size="sm"
-                  >
-                    <PhoneCall className="h-3 w-3 mr-2" />
-                    {!isConnected ? 'AMI Not Connected' : !user?.extension ? 'No Extension' : 'Call'}
-                  </Button>
+
+                {/* Email controls inline */}
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Mail className="h-4 w-4 text-blue-600" />
+                    <span className="font-medium text-sm">Send Email Template</span>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                    <Input
+                      value={contactEmail}
+                      onChange={(e) => setContactEmail(e.target.value)}
+                      placeholder="Email address"
+                      className="text-sm"
+                    />
+                    <div className="relative">
+                      <Select value={selectedTemplate} onValueChange={setSelectedTemplate}>
+                        <SelectTrigger className="text-sm">
+                          <SelectValue placeholder="Select template" />
+                        </SelectTrigger>
+                        <SelectContent side="top" className="z-50 bg-white shadow-lg border">
+                          {getEmailTemplates().map((template: any) => (
+                            <SelectItem key={template.id} value={template.id}>
+                              {template.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <Button 
+                      onClick={prepareEmailPreview} 
+                      disabled={!contactEmail || !selectedTemplate}
+                      className="w-full"
+                      size="sm"
+                      variant="outline"
+                    >
+                      <Eye className="h-3 w-3 mr-2" />
+                      Preview
+                    </Button>
+                    <Button 
+                      onClick={prepareEmailPreview} 
+                      disabled={!contactEmail || !selectedTemplate}
+                      className="w-full"
+                      size="sm"
+                    >
+                      <Send className="h-3 w-3 mr-2" />
+                      Send Email
+                    </Button>
+                  </div>
                 </div>
               </div>
             )}
@@ -735,6 +803,65 @@ const UnifiedDialer = ({ onLeadCreated }: UnifiedDialerProps) => {
           onToggleMinimize={() => setIsChatMinimized(!isChatMinimized)} 
         />
       </div>
+
+      {/* Email Preview Modal */}
+      <Dialog open={showEmailPreview} onOpenChange={setShowEmailPreview}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Mail className="h-5 w-5" />
+              Email Preview
+            </DialogTitle>
+          </DialogHeader>
+          
+          {emailPreviewData && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="font-medium text-gray-600">To:</span>
+                  <p className="bg-gray-50 p-2 rounded">{emailPreviewData.to}</p>
+                </div>
+                <div>
+                  <span className="font-medium text-gray-600">Template:</span>
+                  <p className="bg-gray-50 p-2 rounded">{emailPreviewData.templateName}</p>
+                </div>
+              </div>
+              
+              <div>
+                <span className="font-medium text-gray-600">Subject:</span>
+                <p className="bg-gray-50 p-2 rounded mt-1">{emailPreviewData.subject}</p>
+              </div>
+              
+              <div>
+                <span className="font-medium text-gray-600">Message:</span>
+                <div className="bg-white border rounded mt-1 p-3 max-h-64 overflow-y-auto">
+                  <div dangerouslySetInnerHTML={{ __html: emailPreviewData.body.replace(/\n/g, '<br/>') }} />
+                </div>
+              </div>
+
+              <div className="bg-blue-50 p-3 rounded border border-blue-200">
+                <p className="text-sm text-blue-700">
+                  <strong>Note:</strong> A copy of this email notification will be sent to Discord with sender and recipient information.
+                </p>
+              </div>
+            </div>
+          )}
+          
+          <DialogFooter className="flex gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowEmailPreview(false)}
+            >
+              <X className="h-4 w-4 mr-2" />
+              Cancel
+            </Button>
+            <Button onClick={sendEmailTemplate}>
+              <Send className="h-4 w-4 mr-2" />
+              Send Email
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
