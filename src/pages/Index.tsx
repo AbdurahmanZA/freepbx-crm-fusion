@@ -150,7 +150,7 @@ const IndexPage = () => {
 
         {/* Expanded Dialer Panel */}
         {showUnifiedDialer && (
-          <div className="bg-background border rounded-lg shadow-xl w-80 max-h-96 overflow-hidden">
+          <div className="bg-background border rounded-lg shadow-xl w-[600px] max-h-[500px] overflow-hidden">
             {/* Header with close button */}
             <div className="flex items-center justify-between p-3 border-b bg-muted/30">
               <h3 className="font-semibold text-sm">Unified Dialer</h3>
