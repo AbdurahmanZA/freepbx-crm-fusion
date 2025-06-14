@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from "react";
 import {
   Card,
@@ -282,16 +283,21 @@ const UnifiedDialer = ({ onCallInitiated, disabled }: UnifiedDialerProps) => {
       console.log('📞 [UnifiedDialer] Extracted data:', { phone, name, email, leadData });
       
       if (phone) {
-        // Set the values in the dialer inputs
+        // FORCE update the values in the dialer inputs with explicit logging
+        console.log('📞 [UnifiedDialer] Setting phone number:', phone);
         setPhoneNumber(phone);
+        
+        console.log('📞 [UnifiedDialer] Setting contact name:', name);
         setContactName(name);
+        
+        console.log('📞 [UnifiedDialer] Setting contact email:', email);
         setContactEmail(email);
         
         // If we have full lead data, use it for better population
         if (leadData) {
+          console.log('📞 [UnifiedDialer] Using full lead data:', leadData);
           setContactName(leadData.name || name);
           setContactEmail(leadData.email || email);
-          console.log('📞 [UnifiedDialer] Using full lead data:', leadData);
         } else {
           // Fallback to lookup in local leads
           populateContactFromLeads(phone, name);
@@ -303,13 +309,28 @@ const UnifiedDialer = ({ onCallInitiated, disabled }: UnifiedDialerProps) => {
           console.log('📞 [UnifiedDialer] Auto-expanded email panel');
         }
         
-        console.log('📞 [UnifiedDialer] Updated state with phone, name, and email');
+        console.log('📞 [UnifiedDialer] Final state should be:', {
+          phoneNumber: phone,
+          contactName: name,
+          contactEmail: email || leadData?.email
+        });
         
         // Show immediate feedback that values were received
         toast({
           title: "Lead Selected",
           description: `Ready to call ${name || phone}. Dialer is populated and ready.`,
         });
+        
+        // Force a re-render by updating state in the next tick
+        setTimeout(() => {
+          console.log('📞 [UnifiedDialer] Current state after timeout:', {
+            phoneNumber,
+            contactName,
+            contactEmail
+          });
+        }, 100);
+      } else {
+        console.log('📞 [UnifiedDialer] No phone number in event detail');
       }
     };
 
@@ -384,6 +405,13 @@ const UnifiedDialer = ({ onCallInitiated, disabled }: UnifiedDialerProps) => {
     setIsEmailExpanded(false);
   };
 
+  // Debug current state
+  console.log('📞 [UnifiedDialer] Current render state:', {
+    phoneNumber,
+    contactName,
+    contactEmail
+  });
+
   return (
     <div className="space-y-2">
       <Card className="h-fit shadow-sm border flex flex-col w-full">
@@ -436,6 +464,11 @@ const UnifiedDialer = ({ onCallInitiated, disabled }: UnifiedDialerProps) => {
               </div>
             </div>
           )}
+
+          {/* Debug info - will remove later */}
+          <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded">
+            Debug: Phone={phoneNumber}, Name={contactName}, Email={contactEmail}
+          </div>
 
           {/* Dialer Panel - Compact */}
           <div className="grid grid-cols-2 gap-2">
