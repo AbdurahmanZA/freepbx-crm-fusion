@@ -1,7 +1,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { LogOut, User } from "lucide-react";
+import { LogOut, User, Users } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAMIContext } from "@/contexts/AMIContext";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -11,6 +11,13 @@ const Header = () => {
   const { isConnected } = useAMIContext();
 
   if (!user) return null;
+
+  const canManageUsers = user.role === "Manager" || user.role === "Administrator";
+
+  // Fires event to open User Management tab in dashboard
+  const openUserManagement = () => {
+    window.dispatchEvent(new Event("openUserManagement"));
+  };
 
   return (
     <header className="border-b bg-card">
@@ -37,6 +44,18 @@ const Header = () => {
               <Badge variant="outline" className="text-xs">
                 {user.role}
               </Badge>
+              {canManageUsers && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center gap-2 ml-2"
+                  onClick={openUserManagement}
+                  title="User Management"
+                >
+                  <Users className="h-4 w-4" />
+                  Manage Users
+                </Button>
+              )}
             </div>
             <Button 
               variant="outline" 

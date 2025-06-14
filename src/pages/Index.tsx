@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import LeadManagement from "@/components/LeadManagement";
@@ -11,17 +12,14 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useAMIContext } from "@/contexts/AMIContext";
 import DatabaseManagementCard from "@/components/integration/DatabaseManagementCard";
 import EmailTemplateCard from "@/components/integration/EmailTemplateCard";
-import { 
-  FileText, 
-  X, 
-  ChevronUp, 
-  ChevronDown, 
-  Users, 
-  Phone, 
-  Calendar, 
-  BarChart2, 
+import {
+  FileText,
+  Calendar,
+  BarChart2,
   Settings as SettingsIcon,
-  BookText 
+  BookText,
+  Users,
+  Mail
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -30,12 +28,18 @@ const IndexPage = () => {
   const { connect, isConnected } = useAMIContext();
   const [activeTab, setActiveTab] = useState("leads");
 
-  const [showEmailTemplates, setShowEmailTemplates] = useState(false);
   const [showUnifiedDialer, setShowUnifiedDialer] = useState(true);
 
   if (!user) return null;
 
   const canManageUsers = user.role === "Manager" || user.role === "Administrator";
+
+  // Listen for request to open User Management from header
+  useEffect(() => {
+    const handler = () => setActiveTab("users");
+    window.addEventListener("openUserManagement", handler);
+    return () => window.removeEventListener("openUserManagement", handler);
+  }, []);
 
   // Auto-connect to AMI Bridge on login
   useEffect(() => {
@@ -69,7 +73,7 @@ const IndexPage = () => {
 
       <div className="pb-32">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className={`grid w-full gap-1 ${canManageUsers ? 'grid-cols-5' : 'grid-cols-4'} p-1`}>
+          <TabsList className={`grid w-full gap-1 ${canManageUsers ? 'grid-cols-6' : 'grid-cols-5'} p-1`}>
             <TabsTrigger value="leads" className="flex-1 flex items-center gap-2">
               <Users className="w-4 h-4 shrink-0" />
               Lead Management
@@ -90,8 +94,13 @@ const IndexPage = () => {
               <BookText className="w-4 h-4 shrink-0" />
               Knowledge Base
             </TabsTrigger>
+            <TabsTrigger value="email-templates" className="flex-1 flex items-center gap-2">
+              <Mail className="w-4 h-4 shrink-0" />
+              Email Templates
+            </TabsTrigger>
             {canManageUsers && (
-              <TabsTrigger value="users" className="flex-1 flex items-center gap-2">
+              // User Management tab removed - open via header button instead
+              <TabsTrigger value="users" style={{ display: "none" }}>
                 <Users className="w-4 h-4 shrink-0" />
                 User Management
               </TabsTrigger>
@@ -113,6 +122,11 @@ const IndexPage = () => {
           <TabsContent value="knowledge">
             <KnowledgeBase userRole={user.role} />
           </TabsContent>
+          <TabsContent value="email-templates">
+            <div className="max-w-4xl mx-auto px-1">
+              <EmailTemplateCard templates={emailTemplates} onTemplateUpdate={updateEmailTemplates} />
+            </div>
+          </TabsContent>
           {canManageUsers && (
             <TabsContent value="users">
               <UserManagement />
@@ -133,12 +147,12 @@ const IndexPage = () => {
           >
             {showUnifiedDialer ? (
               <>
-                <ChevronDown className="h-4 w-4 mr-1" />
+                <svg className="h-4 w-4 mr-1" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7"/></svg>
                 Hide Dialer
               </>
             ) : (
               <>
-                <ChevronUp className="h-4 w-4 mr-1" />
+                <svg className="h-4 w-4 mr-1" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7"/></svg>
                 Show Dialer
               </>
             )}
@@ -152,45 +166,9 @@ const IndexPage = () => {
           </div>
         )}
       </div>
-
-      {/* Floating Email Templates Button & Card - positioned to avoid dialer overlap */}
-      <div>
-        {/* Email Templates FAB: positioned higher to avoid unified dialer */}
-        {!showEmailTemplates && (
-          <button
-            aria-label="Open Email Templates"
-            className="fixed z-50 bottom-32 right-6 rounded-full shadow-lg bg-white border border-gray-300 hover:shadow-xl flex items-center gap-2 px-4 py-2 text-sm font-medium transition hover:bg-muted"
-            onClick={() => setShowEmailTemplates(true)}
-            style={{ boxShadow: "0px 2px 8px 1px rgba(0,0,0,0.10)" }}
-          >
-            <FileText className="h-5 w-5 text-blue-600" />
-            Email Templates
-          </button>
-        )}
-
-        {/* Floating Email Templates Card */}
-        {showEmailTemplates && (
-          <div
-            className="fixed z-50 bottom-36 right-6 w-[90vw] max-w-4xl bg-white border border-gray-300 rounded-lg shadow-2xl flex flex-col"
-            style={{ minHeight: "420px", maxHeight: "70vh" }}
-          >
-            <div className="flex items-center justify-between p-3 border-b">
-              <div className="flex items-center gap-2 font-semibold text-lg">
-                <FileText className="h-5 w-5 text-blue-600" />
-                Email Templates
-              </div>
-              <Button size="icon" variant="ghost" onClick={() => setShowEmailTemplates(false)}>
-                <X className="h-5 w-5" />
-              </Button>
-            </div>
-            <div className="flex-1 overflow-y-auto p-4 bg-muted">
-              <EmailTemplateCard templates={emailTemplates} onTemplateUpdate={updateEmailTemplates} />
-            </div>
-          </div>
-        )}
-      </div>
     </div>
   );
 };
 
 export default IndexPage;
+
