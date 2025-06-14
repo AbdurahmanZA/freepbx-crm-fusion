@@ -16,6 +16,7 @@ import { useAMIContext } from "@/contexts/AMIContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { callRecordsService } from "@/services/callRecordsService";
 import DiscordChat from "@/components/discord-chat/DiscordChat";
+import LeadInfoModal from "./LeadInfoModal";
 import {
   Phone,
   MessageCircle,
@@ -25,6 +26,7 @@ import {
   Mail,
   X,
   Send,
+  Info,
 } from "lucide-react";
 
 interface ActiveCall {
@@ -51,6 +53,7 @@ const UnifiedDialer = ({ onLeadCreated }: UnifiedDialerProps) => {
   const [isEmailExpanded, setIsEmailExpanded] = useState(false);
   const [showCallActivity, setShowCallActivity] = useState(false);
   const [showEmailPreview, setShowEmailPreview] = useState(false);
+  const [showLeadInfo, setShowLeadInfo] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState('');
   const [contactName, setContactName] = useState('');
   const [contactEmail, setContactEmail] = useState('');
@@ -578,6 +581,25 @@ const UnifiedDialer = ({ onLeadCreated }: UnifiedDialerProps) => {
     }
   };
 
+  // Helper: Get current lead info, prefer matched lead or dial info
+  const currentLeadInfo = (() => {
+    let matched: Lead | undefined;
+    if (phoneNumber || contactName) {
+      matched = findMatchedLead({
+        leads: allLeads,
+        phoneNumber,
+        leadId: undefined,
+      });
+    }
+    return {
+      id: matched?.id,
+      name: matched?.name ?? contactName,
+      email: matched?.email,
+      phone: matched?.phone ?? phoneNumber,
+      notes: matched?.notes,
+    };
+  })();
+
   if (isMinimized && !activeCall && isChatMinimized) {
     return (
       <div className="fixed bottom-4 right-4 z-50 flex gap-2">
@@ -620,6 +642,17 @@ const UnifiedDialer = ({ onLeadCreated }: UnifiedDialerProps) => {
                 ) : (
                   <Badge variant="destructive" className="text-xs">Disconnected</Badge>
                 )}
+                {/* ADDED: Lead Info Button */}
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  className="ml-1"
+                  onClick={() => setShowLeadInfo(true)}
+                  title="Show lead info and history"
+                >
+                  <Info className="h-4 w-4" />
+                </Button>
               </div>
               <div className="flex gap-2">
                 <Button
@@ -705,6 +738,13 @@ const UnifiedDialer = ({ onLeadCreated }: UnifiedDialerProps) => {
           onToggleMinimize={() => setIsChatMinimized(!isChatMinimized)} 
         />
       </div>
+
+      {/* Lead Info Modal */}
+      <LeadInfoModal
+        open={showLeadInfo}
+        onOpenChange={setShowLeadInfo}
+        lead={currentLeadInfo}
+      />
 
       {/* Email Preview Modal */}
       <Dialog open={showEmailPreview} onOpenChange={setShowEmailPreview}>
