@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -66,6 +67,7 @@ interface IntegrationConfig {
     syncCallbacks: boolean;
     syncMeetings: boolean;
     defaultCalendar: string;
+    clientId: string;
   };
   supabase: {
     url: string;
@@ -143,12 +145,25 @@ const IntegrationSettings = () => {
       channelName: localStorage.getItem('discord_channel') || '#leads',
       enabled: localStorage.getItem('discord_webhook_enabled') === 'true'
     },
-    googleCalendar: {
-      enabled: localStorage.getItem('google_calendar_enabled') === 'true',
-      syncCallbacks: localStorage.getItem('google_calendar_sync_callbacks') === 'true',
-      syncMeetings: localStorage.getItem('google_calendar_sync_meetings') === 'true',
-      defaultCalendar: localStorage.getItem('google_calendar_default') || 'Primary'
-    },
+    googleCalendar: (() => {
+      const saved = localStorage.getItem('google_calendar_config');
+      const defaultConfig = {
+        enabled: false,
+        syncCallbacks: true,
+        syncMeetings: false,
+        defaultCalendar: 'Primary',
+        clientId: ''
+      };
+      if (saved) {
+        try {
+          return { ...defaultConfig, ...JSON.parse(saved) };
+        } catch (e) {
+          console.error("Failed to parse google_calendar_config from localStorage", e);
+          return defaultConfig;
+        }
+      }
+      return defaultConfig;
+    })(),
     supabase: {
       url: localStorage.getItem('supabase_url') || '',
       anonKey: localStorage.getItem('supabase_anon_key') || '',
@@ -213,13 +228,18 @@ const IntegrationSettings = () => {
   };
 
   const updateGoogleCalendarConfig = (field: string, value: any) => {
-    setConfig(prev => ({
-      ...prev,
-      googleCalendar: {
+    setConfig(prev => {
+      const newGoogleConfig = {
         ...prev.googleCalendar,
         [field]: value
-      }
-    }));
+      };
+      // Immediately persist to localStorage for consistency across tabs
+      localStorage.setItem('google_calendar_config', JSON.stringify(newGoogleConfig));
+      return {
+        ...prev,
+        googleCalendar: newGoogleConfig,
+      };
+    });
   };
 
   const updateSupabaseConfig = (field: string, value: any) => {
@@ -386,10 +406,7 @@ const IntegrationSettings = () => {
     localStorage.setItem('discord_webhook_enabled', config.discord.enabled.toString());
 
     // Save Google Calendar settings
-    localStorage.setItem('google_calendar_enabled', config.googleCalendar.enabled.toString());
-    localStorage.setItem('google_calendar_sync_callbacks', config.googleCalendar.syncCallbacks.toString());
-    localStorage.setItem('google_calendar_sync_meetings', config.googleCalendar.syncMeetings.toString());
-    localStorage.setItem('google_calendar_default', config.googleCalendar.defaultCalendar);
+    localStorage.setItem('google_calendar_config', JSON.stringify(config.googleCalendar));
 
     // Save Supabase settings
     localStorage.setItem('supabase_url', config.supabase.url);

@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,6 +12,7 @@ interface GoogleCalendarConfig {
   syncCallbacks: boolean;
   syncMeetings: boolean;
   defaultCalendar: string;
+  clientId?: string;
 }
 
 interface GoogleCalendarCardProps {
@@ -49,12 +49,29 @@ const GoogleCalendarCard = ({
   };
 
   const handleConnectGoogle = () => {
-    // Just a mock. In production, should redirect to Google OAuth URL.
+    if (!config.clientId) {
+      toast({
+        title: "Client ID Missing",
+        description: "Please enter your Google Client ID to connect your account.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const authUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth");
+    
+    authUrl.searchParams.set("client_id", config.clientId);
+    authUrl.searchParams.set("redirect_uri", window.location.origin);
+    authUrl.searchParams.set("response_type", "token");
+    authUrl.searchParams.set("scope", "https://www.googleapis.com/auth/calendar");
+    authUrl.searchParams.set("include_granted_scopes", "true");
+    
     toast({
       title: "Redirecting to Google account sign-in...",
       description: "You will be able to connect your account for calendar sync.",
     });
-    window.open("https://accounts.google.com/o/oauth2/auth", "_blank");
+
+    window.open(authUrl.toString(), "_blank", "noopener,noreferrer");
   };
 
   const getStatusIcon = () => {
@@ -108,12 +125,26 @@ const GoogleCalendarCard = ({
 
         {config.enabled && (
           <>
+            <div className="space-y-2">
+              <Label htmlFor="google-client-id">Google Client ID</Label>
+              <Input
+                id="google-client-id"
+                value={config.clientId || ''}
+                onChange={(e) => onConfigUpdate('clientId', e.target.value)}
+                placeholder="Enter your Google OAuth Client ID"
+              />
+               <p className="text-xs text-muted-foreground">
+                You can get this from your project in the Google Cloud Console.
+              </p>
+            </div>
+
             <div className="flex flex-col gap-2">
               <Button
                 variant="secondary"
                 size="sm"
                 className="w-fit flex items-center gap-2"
                 onClick={handleConnectGoogle}
+                disabled={!config.clientId}
               >
                 <Globe className="h-4 w-4" /> Connect Google Account
               </Button>

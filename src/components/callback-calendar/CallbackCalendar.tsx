@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -33,12 +32,22 @@ const CallbackCalendar = ({ userRole }: CallbackCalendarProps) => {
   // Google Calendar integration state
   const [googleCalendarConfig, setGoogleCalendarConfig] = useState(() => {
     const saved = localStorage.getItem('google_calendar_config');
-    return saved ? JSON.parse(saved) : {
+    const defaultConfig = {
       enabled: false,
       syncCallbacks: true,
       syncMeetings: false,
-      defaultCalendar: 'Primary'
+      defaultCalendar: 'Primary',
+      clientId: ''
     };
+    if (saved) {
+      try {
+        return { ...defaultConfig, ...JSON.parse(saved) };
+      } catch (e) {
+        console.error("Failed to parse google_calendar_config from localStorage", e);
+        return defaultConfig;
+      }
+    }
+    return defaultConfig;
   });
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'testing'>('disconnected');
 
