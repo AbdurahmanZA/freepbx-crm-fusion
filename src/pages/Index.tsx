@@ -133,8 +133,8 @@ const IndexPage = () => {
         )}
       </Tabs>
 
-      {/* Global Unified Dialer - collapsible at bottom */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 bg-background border-t">
+      {/* Global Unified Dialer - positioned at bottom */}
+      <div className="mt-8 border-t bg-background">
         {/* Collapse/Expand Button */}
         <div className="flex justify-center">
           <Button
