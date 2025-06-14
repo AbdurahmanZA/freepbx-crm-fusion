@@ -1,10 +1,11 @@
+
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Calendar, TestTube, Check, X, Google } from "lucide-react";
+import { Calendar, TestTube, Check, X, Globe } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface GoogleCalendarConfig {
@@ -114,7 +115,7 @@ const GoogleCalendarCard = ({
                 className="w-fit flex items-center gap-2"
                 onClick={handleConnectGoogle}
               >
-                <Google className="h-4 w-4" /> Connect Google Account
+                <Globe className="h-4 w-4" /> Connect Google Account
               </Button>
               <span className="text-xs text-muted-foreground ml-1">
                 Connect your Gmail/Google account to allow syncing with Callback Calendar.
