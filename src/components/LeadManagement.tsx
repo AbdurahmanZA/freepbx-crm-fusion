@@ -387,7 +387,7 @@ const LeadManagement = ({ userRole }: LeadManagementProps) => {
 
   // Template dialog state for selected lead
   const [emailDialogOpen, setEmailDialogOpen] = useState(false);
-  const [dialogLead, setDialogLead] = useState<Lead | null>(null);
+  const [dialogLeadId, setDialogLeadId] = useState<number | null>(null);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const [sendingEmail, setSendingEmail] = useState(false);
 
@@ -410,14 +410,27 @@ const LeadManagement = ({ userRole }: LeadManagementProps) => {
 
   // OPEN DIALOG - called when user clicks "Email Form"
   const handleEmailFormClick = (lead: Lead) => {
-    setDialogLead(lead);
+    setDialogLeadId(lead.id);
     setSelectedTemplateId(null);
     setEmailDialogOpen(true);
   };
 
   // SEND EMAIL using chosen template
   const handleTemplateSend = async () => {
-    if (!dialogLead || !selectedTemplateId) return;
+    if (!dialogLeadId || !selectedTemplateId) return;
+
+    const dialogLead = leads.find(l => l.id === dialogLeadId);
+    if (!dialogLead) {
+      toast({
+        title: "Lead Not Found",
+        description: "The selected lead could not be found. It may have been deleted.",
+        variant: "destructive"
+      });
+      setEmailDialogOpen(false);
+      setDialogLeadId(null);
+      return;
+    }
+
     setSendingEmail(true);
 
     // Get template details
@@ -478,7 +491,7 @@ const LeadManagement = ({ userRole }: LeadManagementProps) => {
 
       // Send Discord notification (also with correct email/name)
       if ((window as any).sendDiscordNotification) {
-        (window as any).sendDiscordNotification(
+        (window as any).sendDiscordnotification(
           realLeadName,
           'emailed',
           `Sent ${template.name} to ${realLeadEmail}`
@@ -494,6 +507,7 @@ const LeadManagement = ({ userRole }: LeadManagementProps) => {
       });
     } finally {
       setSendingEmail(false);
+      setDialogLeadId(null);
     }
   };
 
@@ -705,7 +719,10 @@ const LeadManagement = ({ userRole }: LeadManagementProps) => {
       {/* Email Template Picker Dialog */}
       <LeadEmailTemplateDialog
         open={emailDialogOpen}
-        onClose={() => setEmailDialogOpen(false)}
+        onClose={() => {
+          setEmailDialogOpen(false);
+          setDialogLeadId(null);
+        }}
         templates={getTemplates()}
         selectedTemplateId={selectedTemplateId}
         onSelectTemplate={setSelectedTemplateId}
