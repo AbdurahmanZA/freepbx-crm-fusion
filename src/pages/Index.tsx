@@ -61,80 +61,77 @@ const IndexPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Main content container with padding for fixed dialer */}
-      <div className="container mx-auto p-6 space-y-8" style={{ paddingBottom: showUnifiedDialer ? '320px' : '80px' }}>
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold tracking-tight">
-            Welcome back, {user.name}
-          </h1>
-          <p className="text-muted-foreground">
-            Manage your leads, calls, and team performance from your dashboard.
-          </p>
-        </div>
-
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className={`grid w-full gap-1 ${canManageUsers ? 'grid-cols-6' : 'grid-cols-5'} p-1`}>
-            <TabsTrigger value="leads" className="flex-1 flex items-center gap-2">
-              <Users className="w-4 h-4 shrink-0" />
-              Lead Management
-            </TabsTrigger>
-            <TabsTrigger value="calendar" className="flex-1 flex items-center gap-2">
-              <Calendar className="w-4 h-4 shrink-0" />
-              Callback Calendar
-            </TabsTrigger>
-            <TabsTrigger value="reports" className="flex-1 flex items-center gap-2">
-              <BarChart2 className="w-4 h-4 shrink-0" />
-              Reports
-            </TabsTrigger>
-            <TabsTrigger value="integrations" className="flex-1 flex items-center gap-2">
-              <SettingsIcon className="w-4 h-4 shrink-0" />
-              Integrations
-            </TabsTrigger>
-            <TabsTrigger value="knowledge" className="flex-1 flex items-center gap-2">
-              <BookText className="w-4 h-4 shrink-0" />
-              Knowledge Base
-            </TabsTrigger>
-            <TabsTrigger value="email-templates" className="flex-1 flex items-center gap-2">
-              <Mail className="w-4 h-4 shrink-0" />
-              Email Templates
-            </TabsTrigger>
-            {canManageUsers && (
-              // User Management tab removed - open via header button instead
-              <TabsTrigger value="users" style={{ display: "none" }}>
-                <Users className="w-4 h-4 shrink-0" />
-                User Management
-              </TabsTrigger>
-            )}
-          </TabsList>
-          <TabsContent value="leads">
-            <LeadManagement userRole={user.role} />
-          </TabsContent>
-          <TabsContent value="calendar">
-            <CallbackCalendar userRole={user.role} />
-          </TabsContent>
-          <TabsContent value="reports">
-            <ReportsAnalytics userRole={user.role} />
-          </TabsContent>
-          <TabsContent value="integrations">
-            <DatabaseManagementCard userRole={user.role} />
-            <IntegrationSettings />
-          </TabsContent>
-          <TabsContent value="knowledge">
-            <KnowledgeBase userRole={user.role} />
-          </TabsContent>
-          <TabsContent value="email-templates">
-            <div className="max-w-4xl mx-auto px-1">
-              <EmailTemplateCard templates={emailTemplates} onTemplateUpdate={updateEmailTemplates} />
-            </div>
-          </TabsContent>
-          {canManageUsers && (
-            <TabsContent value="users">
-              <UserManagement />
-            </TabsContent>
-          )}
-        </Tabs>
+    <div className="space-y-8">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold tracking-tight">
+          Welcome back, {user.name}
+        </h1>
+        <p className="text-muted-foreground">
+          Manage your leads, calls, and team performance from your dashboard.
+        </p>
       </div>
+
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <TabsList className={`grid w-full gap-1 ${canManageUsers ? 'grid-cols-6' : 'grid-cols-5'} p-1`}>
+          <TabsTrigger value="leads" className="flex-1 flex items-center gap-2">
+            <Users className="w-4 h-4 shrink-0" />
+            Lead Management
+          </TabsTrigger>
+          <TabsTrigger value="calendar" className="flex-1 flex items-center gap-2">
+            <Calendar className="w-4 h-4 shrink-0" />
+            Callback Calendar
+          </TabsTrigger>
+          <TabsTrigger value="reports" className="flex-1 flex items-center gap-2">
+            <BarChart2 className="w-4 h-4 shrink-0" />
+            Reports
+          </TabsTrigger>
+          <TabsTrigger value="integrations" className="flex-1 flex items-center gap-2">
+            <SettingsIcon className="w-4 h-4 shrink-0" />
+            Integrations
+          </TabsTrigger>
+          <TabsTrigger value="knowledge" className="flex-1 flex items-center gap-2">
+            <BookText className="w-4 h-4 shrink-0" />
+            Knowledge Base
+          </TabsTrigger>
+          <TabsTrigger value="email-templates" className="flex-1 flex items-center gap-2">
+            <Mail className="w-4 h-4 shrink-0" />
+            Email Templates
+          </TabsTrigger>
+          {canManageUsers && (
+            // User Management tab removed - open via header button instead
+            <TabsTrigger value="users" style={{ display: "none" }}>
+              <Users className="w-4 h-4 shrink-0" />
+              User Management
+            </TabsTrigger>
+          )}
+        </TabsList>
+        <TabsContent value="leads">
+          <LeadManagement userRole={user.role} />
+        </TabsContent>
+        <TabsContent value="calendar">
+          <CallbackCalendar userRole={user.role} />
+        </TabsContent>
+        <TabsContent value="reports">
+          <ReportsAnalytics userRole={user.role} />
+        </TabsContent>
+        <TabsContent value="integrations">
+          <DatabaseManagementCard userRole={user.role} />
+          <IntegrationSettings />
+        </TabsContent>
+        <TabsContent value="knowledge">
+          <KnowledgeBase userRole={user.role} />
+        </TabsContent>
+        <TabsContent value="email-templates">
+          <div className="max-w-4xl mx-auto px-1">
+            <EmailTemplateCard templates={emailTemplates} onTemplateUpdate={updateEmailTemplates} />
+          </div>
+        </TabsContent>
+        {canManageUsers && (
+          <TabsContent value="users">
+            <UserManagement />
+          </TabsContent>
+        )}
+      </Tabs>
 
       {/* Global Unified Dialer - collapsible at bottom */}
       <div className="fixed bottom-0 left-0 right-0 z-40 bg-background border-t">
