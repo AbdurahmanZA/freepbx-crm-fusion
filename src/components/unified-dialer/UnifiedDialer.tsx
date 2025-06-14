@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { 
   Phone, 
   PhoneCall, 
@@ -24,7 +25,9 @@ import {
   Send,
   Mail,
   Eye,
-  X
+  X,
+  ChevronDown,
+  ChevronUp
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAMIContext } from "@/contexts/AMIContext";
@@ -53,6 +56,7 @@ const UnifiedDialer = ({ onLeadCreated }: UnifiedDialerProps) => {
   
   const [isMinimized, setIsMinimized] = useState(false);
   const [isChatMinimized, setIsChatMinimized] = useState(true);
+  const [isEmailExpanded, setIsEmailExpanded] = useState(false);
   const [showCallActivity, setShowCallActivity] = useState(false);
   const [showEmailPreview, setShowEmailPreview] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -65,12 +69,22 @@ const UnifiedDialer = ({ onLeadCreated }: UnifiedDialerProps) => {
   const [isMuted, setIsMuted] = useState(false);
   const [callStartTime, setCallStartTime] = useState<Date | null>(null);
 
-  // Get email templates from localStorage
+  // Get email templates from localStorage with proper parsing
   const getEmailTemplates = () => {
     try {
       const templates = localStorage.getItem('email_templates');
-      return templates ? JSON.parse(templates) : [];
-    } catch {
+      console.log('📧 [UnifiedDialer] Raw templates from localStorage:', templates);
+      
+      if (!templates) {
+        console.log('📧 [UnifiedDialer] No templates found in localStorage');
+        return [];
+      }
+      
+      const parsed = JSON.parse(templates);
+      console.log('📧 [UnifiedDialer] Parsed templates:', parsed);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (error) {
+      console.error('📧 [UnifiedDialer] Error parsing email templates:', error);
       return [];
     }
   };
@@ -364,6 +378,8 @@ const UnifiedDialer = ({ onLeadCreated }: UnifiedDialerProps) => {
 
     try {
       const templates = getEmailTemplates();
+      console.log('📧 [UnifiedDialer] Available templates for preview:', templates);
+      
       const template = templates.find((t: any) => t.id === selectedTemplate);
 
       if (!template) {
@@ -709,7 +725,7 @@ const UnifiedDialer = ({ onLeadCreated }: UnifiedDialerProps) => {
               </div>
             )}
 
-            {/* Dialer Interface with Inline Email */}
+            {/* Dialer Interface */}
             {!activeCall && (
               <div className="space-y-4">
                 {/* Main dialer controls */}
@@ -743,55 +759,77 @@ const UnifiedDialer = ({ onLeadCreated }: UnifiedDialerProps) => {
                   </div>
                 </div>
 
-                {/* Email controls inline */}
-                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Mail className="h-4 w-4 text-blue-600" />
-                    <span className="font-medium text-sm">Send Email Template</span>
-                  </div>
+                {/* Collapsible Email Section */}
+                <Collapsible open={isEmailExpanded} onOpenChange={setIsEmailExpanded}>
+                  <CollapsibleTrigger asChild>
+                    <Button 
+                      variant="outline" 
+                      className="w-full flex items-center justify-between p-3 h-auto"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Mail className="h-4 w-4 text-blue-600" />
+                        <span className="font-medium text-sm">Send Email Template</span>
+                      </div>
+                      {isEmailExpanded ? (
+                        <ChevronUp className="h-4 w-4" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </CollapsibleTrigger>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                    <Input
-                      value={contactEmail}
-                      onChange={(e) => setContactEmail(e.target.value)}
-                      placeholder="Email address"
-                      className="text-sm"
-                    />
-                    <div className="relative">
-                      <Select value={selectedTemplate} onValueChange={setSelectedTemplate}>
-                        <SelectTrigger className="text-sm">
-                          <SelectValue placeholder="Select template" />
-                        </SelectTrigger>
-                        <SelectContent side="top" className="z-50 bg-white shadow-lg border">
-                          {getEmailTemplates().map((template: any) => (
-                            <SelectItem key={template.id} value={template.id}>
-                              {template.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                  <CollapsibleContent className="space-y-0">
+                    <div className="p-3 bg-blue-50 border border-blue-200 rounded-b-lg border-t-0">
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                        <Input
+                          value={contactEmail}
+                          onChange={(e) => setContactEmail(e.target.value)}
+                          placeholder="Email address"
+                          className="text-sm"
+                        />
+                        <div className="relative">
+                          <Select value={selectedTemplate} onValueChange={setSelectedTemplate}>
+                            <SelectTrigger className="text-sm">
+                              <SelectValue placeholder="Select template" />
+                            </SelectTrigger>
+                            <SelectContent side="top" className="z-50 bg-white shadow-lg border">
+                              {getEmailTemplates().map((template: any) => (
+                                <SelectItem key={template.id} value={template.id}>
+                                  {template.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <Button 
+                          onClick={prepareEmailPreview} 
+                          disabled={!contactEmail || !selectedTemplate}
+                          className="w-full"
+                          size="sm"
+                          variant="outline"
+                        >
+                          <Eye className="h-3 w-3 mr-2" />
+                          Preview
+                        </Button>
+                        <Button 
+                          onClick={prepareEmailPreview} 
+                          disabled={!contactEmail || !selectedTemplate}
+                          className="w-full"
+                          size="sm"
+                        >
+                          <Send className="h-3 w-3 mr-2" />
+                          Send Email
+                        </Button>
+                      </div>
+
+                      {getEmailTemplates().length === 0 && (
+                        <div className="mt-3 p-2 bg-yellow-100 border border-yellow-300 rounded text-xs text-yellow-700">
+                          No email templates found. Please create templates in Integration Settings first.
+                        </div>
+                      )}
                     </div>
-                    <Button 
-                      onClick={prepareEmailPreview} 
-                      disabled={!contactEmail || !selectedTemplate}
-                      className="w-full"
-                      size="sm"
-                      variant="outline"
-                    >
-                      <Eye className="h-3 w-3 mr-2" />
-                      Preview
-                    </Button>
-                    <Button 
-                      onClick={prepareEmailPreview} 
-                      disabled={!contactEmail || !selectedTemplate}
-                      className="w-full"
-                      size="sm"
-                    >
-                      <Send className="h-3 w-3 mr-2" />
-                      Send Email
-                    </Button>
-                  </div>
-                </div>
+                  </CollapsibleContent>
+                </Collapsible>
               </div>
             )}
           </CardContent>
