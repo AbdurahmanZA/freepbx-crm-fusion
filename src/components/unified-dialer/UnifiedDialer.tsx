@@ -19,6 +19,9 @@ import UnifiedDialerHeader from "./UnifiedDialerHeader";
 import UnifiedDialerAgentInfo from "./UnifiedDialerAgentInfo";
 import UnifiedDialerActiveCall from "./UnifiedDialerActiveCall";
 import UnifiedDialerPanelWrapper from "./UnifiedDialerPanelWrapper";
+import CallHistory from "@/components/call-center/CallHistory";
+import { callRecordsService, CallRecord } from "@/services/callRecordsService";
+import { ChevronUp, ChevronDown } from "lucide-react";
 
 interface UnifiedDialerProps {
   onCallInitiated: (callData: {
@@ -47,6 +50,20 @@ const UnifiedDialer = ({ onCallInitiated, disabled }: UnifiedDialerProps) => {
     startTime: Date;
     status: "ringing" | "connected" | "on-hold" | "ended";
   } | null>(null);
+
+  // Call history state
+  const [showCallHistory, setShowCallHistory] = useState(false);
+  const [callRecords, setCallRecords] = useState<CallRecord[]>([]);
+
+  useEffect(() => {
+    // Initial fetch
+    setCallRecords(callRecordsService.getRecords());
+    // Subscribe for updates
+    const unsubscribe = callRecordsService.subscribe((records) =>
+      setCallRecords(records)
+    );
+    return unsubscribe;
+  }, []);
 
   // Monitor AMI events for call status updates
   useEffect(() => {
@@ -282,7 +299,9 @@ const UnifiedDialer = ({ onCallInitiated, disabled }: UnifiedDialerProps) => {
       <CardContent className="space-y-1 px-3 py-2 !pt-0">
         <UnifiedDialerAgentInfo user={user} />
         {!user?.extension && (
-          <p className="text-destructive mt-1 text-xs text-center">No extension assigned</p>
+          <p className="text-destructive mt-1 text-xs text-center">
+            No extension assigned
+          </p>
         )}
 
         {/* Active call status */}
@@ -305,6 +324,27 @@ const UnifiedDialer = ({ onCallInitiated, disabled }: UnifiedDialerProps) => {
             Connect AMI in Integration Settings
           </p>
         )}
+
+        {/* Recent Calls / Call History Card - Collapsible */}
+        <div className="mt-3">
+          <button
+            onClick={() => setShowCallHistory((prev) => !prev)}
+            className="w-full flex justify-between items-center px-3 py-1 bg-muted rounded hover:bg-muted/70 transition text-sm font-medium mb-1"
+            aria-expanded={showCallHistory}
+          >
+            <span>Recent Calls</span>
+            {showCallHistory ? (
+              <ChevronUp className="h-4 w-4" />
+            ) : (
+              <ChevronDown className="h-4 w-4" />
+            )}
+          </button>
+          {showCallHistory && (
+            <div className="pb-1">
+              <CallHistory calls={callRecords.slice(0, 5)} />
+            </div>
+          )}
+        </div>
       </CardContent>
     </Card>
   );
