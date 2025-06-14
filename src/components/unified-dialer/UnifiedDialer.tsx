@@ -80,20 +80,30 @@ const UnifiedDialer = ({ onLeadCreated }: UnifiedDialerProps) => {
       // Expand dialer when call is requested
       setIsMinimized(false);
       
-      // Populate dialer fields
-      setPhoneNumber(callData.phone || callData.phoneNumber || '');
-      setContactName(callData.name || callData.leadName || callData.contactName || '');
+      // Populate dialer fields from the incoming call data
+      const targetPhone = callData.phone || callData.phoneNumber || '';
+      const targetName = callData.name || callData.leadName || callData.contactName || 'Unknown Contact';
+      
+      setPhoneNumber(targetPhone);
+      setContactName(targetName);
       
       // Show notification
       toast({
         title: "Call Request Received",
-        description: `Preparing to call ${callData.name || 'Unknown Contact'}`,
+        description: `Preparing to call ${targetName}`,
       });
       
-      // Auto-initiate call immediately
+      // Auto-initiate call immediately with enhanced logging
+      console.log('📞 [UnifiedDialer] Auto-initiating call with data:', {
+        phone: targetPhone,
+        name: targetName,
+        leadId: callData.leadId || callData.id,
+        source: callData.source || 'unknown'
+      });
+      
       await performCall(
-        callData.phone || callData.phoneNumber, 
-        callData.name || callData.leadName || callData.contactName, 
+        targetPhone, 
+        targetName, 
         callData.leadId || callData.id
       );
     };
@@ -102,6 +112,7 @@ const UnifiedDialer = ({ onLeadCreated }: UnifiedDialerProps) => {
     const eventTypes = ['unifiedDialerCall', 'initiateCall', 'dialLead', 'callLead'];
     
     eventTypes.forEach(eventType => {
+      console.log(`📞 [UnifiedDialer] Registering listener for: ${eventType}`);
       window.addEventListener(eventType, handleUnifiedDialerCall as EventListener);
     });
 
@@ -247,7 +258,8 @@ const UnifiedDialer = ({ onLeadCreated }: UnifiedDialerProps) => {
         context: dialContext,
         userExtension: user.extension,
         targetPhone: phone,
-        contactName: name
+        contactName: name,
+        leadId: leadId
       });
 
       const success = await originateCall(

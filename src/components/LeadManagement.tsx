@@ -170,13 +170,14 @@ const LeadManagement = ({ userRole }: LeadManagementProps) => {
     }
 
     try {
-      console.log('📞 [LeadManagement] Triggering call via UnifiedDialer:', {
+      console.log('📞 [LeadManagement] Initiating call via UnifiedDialer:', {
         leadName,
         phone,
-        leadId
+        leadId,
+        userExtension: user.extension
       });
 
-      // Update lead status to show they've been contacted
+      // Update lead status immediately
       setLeads(prevLeads => 
         prevLeads.map(lead => 
           lead.id === leadId 
@@ -185,20 +186,32 @@ const LeadManagement = ({ userRole }: LeadManagementProps) => {
         )
       );
 
-      // Trigger UnifiedDialer call by dispatching a custom event
-      const dialerCallEvent = new CustomEvent('unifiedDialerCall', { 
+      // Dispatch event to UnifiedDialer with proper structure
+      const callEvent = new CustomEvent('unifiedDialerCall', { 
         detail: {
-          name: leadName,
           phone: phone,
+          name: leadName,
           leadId: leadId.toString(),
-          notes: `Call initiated from Lead Management for ${leadName}`
+          contactName: leadName,
+          phoneNumber: phone,
+          notes: `Call initiated from Lead Management for ${leadName}`,
+          source: 'LeadManagement'
         }
       });
-      window.dispatchEvent(dialerCallEvent);
+      
+      console.log('📞 [LeadManagement] Dispatching call event:', callEvent.detail);
+      window.dispatchEvent(callEvent);
+
+      // Also try alternative event names for better compatibility
+      const alternativeEvents = ['initiateCall', 'dialLead', 'callLead'];
+      alternativeEvents.forEach(eventName => {
+        const altEvent = new CustomEvent(eventName, { detail: callEvent.detail });
+        window.dispatchEvent(altEvent);
+      });
 
       toast({
-        title: "Call Initiated",
-        description: `Calling ${leadName} via UnifiedDialer`,
+        title: "Call Request Sent",
+        description: `Calling ${leadName} via UnifiedDialer...`,
       });
 
       // Send Discord notification
@@ -206,12 +219,12 @@ const LeadManagement = ({ userRole }: LeadManagementProps) => {
         (window as any).sendDiscordNotification(
           leadName, 
           'called', 
-          `Call initiated to ${phone}`
+          `Call initiated to ${phone} from Lead Management`
         );
       }
 
     } catch (error) {
-      console.error('Call initiation error:', error);
+      console.error('❌ [LeadManagement] Call initiation error:', error);
       toast({
         title: "Call Failed",
         description: "Could not initiate call through UnifiedDialer.",
