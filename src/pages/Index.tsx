@@ -13,7 +13,18 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useAMIContext } from "@/contexts/AMIContext";
 import DatabaseManagementCard from "@/components/integration/DatabaseManagementCard";
 import EmailTemplateCard from "@/components/integration/EmailTemplateCard";
-import { FileText, X, ChevronUp, ChevronDown } from "lucide-react";
+import { 
+  FileText, 
+  X, 
+  ChevronUp, 
+  ChevronDown, 
+  Users, 
+  Phone, 
+  Calendar, 
+  BarChart2, 
+  Settings as SettingsIcon,
+  BookText 
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const IndexPage = () => {
@@ -61,14 +72,35 @@ const IndexPage = () => {
       <div className="pb-32">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className={`grid w-full gap-1 ${canManageUsers ? 'grid-cols-6' : 'grid-cols-5'} p-1`}>
-            <TabsTrigger value="leads" className="flex-1">Lead Management</TabsTrigger>
-            <TabsTrigger value="calls" className="flex-1">Call Center</TabsTrigger>
-            <TabsTrigger value="calendar" className="flex-1">Callback Calendar</TabsTrigger>
-            <TabsTrigger value="reports" className="flex-1">Reports</TabsTrigger>
-            <TabsTrigger value="integrations" className="flex-1">Integrations</TabsTrigger>
-            <TabsTrigger value="knowledge" className="flex-1">Knowledge Base</TabsTrigger>
+            <TabsTrigger value="leads" className="flex-1 flex items-center gap-2">
+              <Users className="w-4 h-4 shrink-0" />
+              Lead Management
+            </TabsTrigger>
+            <TabsTrigger value="calls" className="flex-1 flex items-center gap-2">
+              <Phone className="w-4 h-4 shrink-0" />
+              Call Center
+            </TabsTrigger>
+            <TabsTrigger value="calendar" className="flex-1 flex items-center gap-2">
+              <Calendar className="w-4 h-4 shrink-0" />
+              Callback Calendar
+            </TabsTrigger>
+            <TabsTrigger value="reports" className="flex-1 flex items-center gap-2">
+              <BarChart2 className="w-4 h-4 shrink-0" />
+              Reports
+            </TabsTrigger>
+            <TabsTrigger value="integrations" className="flex-1 flex items-center gap-2">
+              <SettingsIcon className="w-4 h-4 shrink-0" />
+              Integrations
+            </TabsTrigger>
+            <TabsTrigger value="knowledge" className="flex-1 flex items-center gap-2">
+              <BookText className="w-4 h-4 shrink-0" />
+              Knowledge Base
+            </TabsTrigger>
             {canManageUsers && (
-              <TabsTrigger value="users" className="flex-1">User Management</TabsTrigger>
+              <TabsTrigger value="users" className="flex-1 flex items-center gap-2">
+                <Users className="w-4 h-4 shrink-0" />
+                User Management
+              </TabsTrigger>
             )}
           </TabsList>
           <TabsContent value="leads">
@@ -171,3 +203,4 @@ const IndexPage = () => {
 };
 
 export default IndexPage;
+
