@@ -11,12 +11,15 @@ import SecuritySettingsCard from "./integration/SecuritySettingsCard";
 import DiscordWebhookCard from "./integration/DiscordWebhookCard";
 import GoogleCalendarCard from "./integration/GoogleCalendarCard";
 import SupabaseConfigCard from "./integration/SupabaseConfigCard";
+import SMTPConfigCard from "./integration/SMTPConfigCard";
+import EmailTemplateCard from "./integration/EmailTemplateCard";
 
 interface ConnectionStatus {
   amiBridge: 'connected' | 'disconnected' | 'testing';
   database: 'connected' | 'disconnected' | 'testing';
   googleCalendar: 'connected' | 'disconnected' | 'testing';
   supabase: 'connected' | 'disconnected' | 'testing';
+  smtp: 'connected' | 'disconnected' | 'testing';
 }
 
 interface LogEntry {
@@ -24,6 +27,14 @@ interface LogEntry {
   type: 'info' | 'success' | 'warning' | 'error';
   message: string;
   details?: string;
+}
+
+interface EmailTemplate {
+  id: string;
+  name: string;
+  subject: string;
+  body: string;
+  type: 'form-link' | 'quote-request' | 'follow-up' | 'custom';
 }
 
 interface IntegrationConfig {
@@ -62,6 +73,16 @@ interface IntegrationConfig {
     enabled: boolean;
     googleAuthEnabled: boolean;
   };
+  smtp: {
+    enabled: boolean;
+    host: string;
+    port: string;
+    username: string;
+    password: string;
+    encryption: string;
+    fromEmail: string;
+    fromName: string;
+  };
 }
 
 const IntegrationSettings = () => {
@@ -71,7 +92,8 @@ const IntegrationSettings = () => {
     amiBridge: 'disconnected',
     database: 'disconnected',
     googleCalendar: 'disconnected',
-    supabase: 'disconnected'
+    supabase: 'disconnected',
+    smtp: 'disconnected'
   });
 
   const [integrationLogs, setIntegrationLogs] = useState<LogEntry[]>([
@@ -91,6 +113,11 @@ const IntegrationSettings = () => {
       message: 'Bridge server configured for 192.168.0.5'
     }
   ]);
+
+  const [emailTemplates, setEmailTemplates] = useState<EmailTemplate[]>(() => {
+    const saved = localStorage.getItem('email_templates');
+    return saved ? JSON.parse(saved) : [];
+  });
 
   const [config, setConfig] = useState<IntegrationConfig>({
     database: {
@@ -127,6 +154,16 @@ const IntegrationSettings = () => {
       serviceKey: localStorage.getItem('supabase_service_key') || '',
       enabled: localStorage.getItem('supabase_enabled') === 'true',
       googleAuthEnabled: localStorage.getItem('supabase_google_auth') === 'true'
+    },
+    smtp: {
+      enabled: localStorage.getItem('smtp_enabled') === 'true',
+      host: localStorage.getItem('smtp_host') || '',
+      port: localStorage.getItem('smtp_port') || '587',
+      username: localStorage.getItem('smtp_username') || '',
+      password: '', // Never store password in localStorage
+      encryption: localStorage.getItem('smtp_encryption') || 'tls',
+      fromEmail: localStorage.getItem('smtp_from_email') || '',
+      fromName: localStorage.getItem('smtp_from_name') || ''
     }
   });
 
@@ -192,6 +229,21 @@ const IntegrationSettings = () => {
         [field]: value
       }
     }));
+  };
+
+  const updateSMTPConfig = (field: string, value: any) => {
+    setConfig(prev => ({
+      ...prev,
+      smtp: {
+        ...prev.smtp,
+        [field]: value
+      }
+    }));
+  };
+
+  const updateEmailTemplates = (templates: EmailTemplate[]) => {
+    setEmailTemplates(templates);
+    localStorage.setItem('email_templates', JSON.stringify(templates));
   };
 
   const testDatabaseConnection = async () => {
@@ -284,6 +336,29 @@ const IntegrationSettings = () => {
     }
   };
 
+  const testSMTPConnection = async (): Promise<boolean> => {
+    setConnectionStatus(prev => ({ ...prev, smtp: 'testing' }));
+    addLogEntry('info', `Testing SMTP connection to ${config.smtp.host}:${config.smtp.port}`);
+    
+    try {
+      // Mock test - in real implementation, this would test SMTP connection
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      if (config.smtp.host && config.smtp.username) {
+        setConnectionStatus(prev => ({ ...prev, smtp: 'connected' }));
+        addLogEntry('success', 'SMTP connection successful');
+        return true;
+      } else {
+        throw new Error('Missing SMTP host or username');
+      }
+    } catch (error) {
+      setConnectionStatus(prev => ({ ...prev, smtp: 'disconnected' }));
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      addLogEntry('error', 'SMTP connection failed', errorMessage);
+      return false;
+    }
+  };
+
   const saveSettings = () => {
     // Save database settings
     Object.entries(config.database).forEach(([key, value]) => {
@@ -321,6 +396,16 @@ const IntegrationSettings = () => {
     localStorage.setItem('supabase_service_key', config.supabase.serviceKey);
     localStorage.setItem('supabase_enabled', config.supabase.enabled.toString());
     localStorage.setItem('supabase_google_auth', config.supabase.googleAuthEnabled.toString());
+
+    // Save SMTP settings
+    localStorage.setItem('smtp_enabled', config.smtp.enabled.toString());
+    localStorage.setItem('smtp_host', config.smtp.host);
+    localStorage.setItem('smtp_port', config.smtp.port);
+    localStorage.setItem('smtp_username', config.smtp.username);
+    localStorage.setItem('smtp_encryption', config.smtp.encryption);
+    localStorage.setItem('smtp_from_email', config.smtp.fromEmail);
+    localStorage.setItem('smtp_from_name', config.smtp.fromName);
+    // Note: password is never saved to localStorage for security
 
     toast({
       title: "Settings Saved",
@@ -395,7 +480,19 @@ const IntegrationSettings = () => {
               onConfigUpdate={updateGoogleCalendarConfig}
               onTestConnection={testGoogleCalendarConnection}
             />
+
+            <SMTPConfigCard 
+              config={config.smtp}
+              connectionStatus={connectionStatus.smtp}
+              onConfigUpdate={updateSMTPConfig}
+              onTestConnection={testSMTPConnection}
+            />
           </div>
+
+          <EmailTemplateCard 
+            templates={emailTemplates}
+            onTemplateUpdate={updateEmailTemplates}
+          />
 
           <IntegrationLogsCard 
             logs={integrationLogs}

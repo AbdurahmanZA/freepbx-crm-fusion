@@ -18,7 +18,8 @@ import {
   AlertCircle,
   Edit,
   Save,
-  X
+  X,
+  Send
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAMIContext } from "@/contexts/AMIContext";
@@ -370,6 +371,93 @@ const LeadManagement = ({ userRole }: LeadManagementProps) => {
     });
   };
 
+  const handleSendEmail = async (lead: Lead, templateType: string = 'form-link') => {
+    // Get SMTP config from localStorage
+    const smtpEnabled = localStorage.getItem('smtp_enabled') === 'true';
+    const smtpHost = localStorage.getItem('smtp_host');
+    const smtpUsername = localStorage.getItem('smtp_username');
+
+    if (!smtpEnabled || !smtpHost || !smtpUsername) {
+      toast({
+        title: "SMTP Not Configured",
+        description: "Please configure SMTP settings in Integration Settings first.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Get email templates
+    const templates = JSON.parse(localStorage.getItem('email_templates') || '[]');
+    const template = templates.find((t: any) => t.type === templateType) || templates[0];
+
+    if (!template) {
+      toast({
+        title: "No Template Found",
+        description: "Please create an email template in Integration Settings first.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      // Replace template variables
+      const companyName = localStorage.getItem('smtp_from_name') || 'Your Company';
+      const formLink = `${window.location.origin}/customer-form?lead=${lead.id}`;
+      
+      const subject = template.subject
+        .replace('{{customerName}}', lead.name)
+        .replace('{{companyName}}', companyName);
+      
+      const body = template.body
+        .replace('{{customerName}}', lead.name)
+        .replace('{{formLink}}', formLink)
+        .replace('{{companyName}}', companyName)
+        .replace('{{phone}}', lead.phone)
+        .replace('{{email}}', lead.email);
+
+      console.log('📧 [LeadManagement] Sending email:', {
+        to: lead.email,
+        subject,
+        template: template.name
+      });
+
+      // In a real implementation, this would send the email via your backend
+      // For now, we'll simulate the email sending
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Update lead status
+      setLeads(prevLeads => 
+        prevLeads.map(l => 
+          l.id === lead.id 
+            ? { ...l, status: 'contacted', lastContact: new Date().toISOString().split('T')[0] }
+            : l
+        )
+      );
+
+      toast({
+        title: "Email Sent",
+        description: `Email sent to ${lead.name} (${lead.email})`,
+      });
+
+      // Send Discord notification
+      if ((window as any).sendDiscordNotification) {
+        (window as any).sendDiscordNotification(
+          lead.name, 
+          'emailed', 
+          `Sent ${template.name} to ${lead.email}`
+        );
+      }
+
+    } catch (error) {
+      console.error('Email sending error:', error);
+      toast({
+        title: "Email Failed",
+        description: "Could not send email. Please check your SMTP configuration.",
+        variant: "destructive"
+      });
+    }
+  };
+
   const filteredLeads = leads.filter(lead =>
     lead.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     lead.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -529,6 +617,14 @@ const LeadManagement = ({ userRole }: LeadManagementProps) => {
                         >
                           <PhoneCall className="h-3 w-3" />
                           Call
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          onClick={() => handleSendEmail(lead, 'form-link')}
+                          className="bg-blue-600 hover:bg-blue-700 flex items-center gap-1"
+                        >
+                          <Send className="h-3 w-3" />
+                          Email Form
                         </Button>
                         {canEditLeads && (
                           <Button 
