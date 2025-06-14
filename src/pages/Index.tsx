@@ -37,13 +37,14 @@ import {
   DrawerTitle,
   DrawerTrigger,
 } from "@/components/ui/drawer";
+import { useToast } from "@/hooks/use-toast";
 
 const IndexPage = () => {
   const { user } = useAuth();
   const { connect, isConnected } = useAMIContext();
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("leads");
-
-  const [showUnifiedDialer, setShowUnifiedDialer] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   // Call history state
   const [callRecords, setCallRecords] = useState<CallRecord[]>([]);
@@ -87,6 +88,24 @@ const IndexPage = () => {
     setEmailTemplates(templates);
     localStorage.setItem('email_templates', JSON.stringify(templates));
   };
+
+  // Listen for dialer open requests from lead management
+  useEffect(() => {
+    const handleDialerRequest = (event: CustomEvent) => {
+      console.log('📞 [Index] Received dialer request:', event.detail);
+      
+      if (event.detail?.autoOpenDrawer) {
+        setDrawerOpen(true);
+        toast({
+          title: "Dialer Opened",
+          description: `Ready to call ${event.detail.contactName || 'contact'}`,
+        });
+      }
+    };
+
+    window.addEventListener('unifiedDialerCall', handleDialerRequest as EventListener);
+    return () => window.removeEventListener('unifiedDialerCall', handleDialerRequest as EventListener);
+  }, [toast]);
 
   return (
     <div className="space-y-8 pb-20">
@@ -162,7 +181,7 @@ const IndexPage = () => {
       </Tabs>
 
       {/* Bottom Drawer Dialer */}
-      <Drawer>
+      <Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
         <DrawerTrigger asChild>
           <div className="fixed bottom-0 left-0 right-0 z-50">
             <div className="bg-primary text-primary-foreground px-4 py-3 flex items-center justify-between shadow-lg border-t">

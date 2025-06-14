@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from "react";
 import {
   Card,
@@ -269,7 +268,7 @@ const UnifiedDialer = ({ onCallInitiated, disabled }: UnifiedDialerProps) => {
     }
   };
 
-  // Event handler for "click to dial" from lead management
+  // Enhanced event handler for "click to dial" from lead management
   useEffect(() => {
     const handleUnifiedDialerCall = (event: CustomEvent) => {
       console.log('📞 [UnifiedDialer] Received call event:', event.detail);
@@ -277,22 +276,39 @@ const UnifiedDialer = ({ onCallInitiated, disabled }: UnifiedDialerProps) => {
       const detail = event.detail || {};
       const phone = detail.phoneNumber || detail.phone;
       const name = detail.contactName || detail.name || "";
+      const email = detail.contactEmail || "";
+      const leadData = detail.leadData;
       
-      console.log('📞 [UnifiedDialer] Extracted data:', { phone, name });
+      console.log('📞 [UnifiedDialer] Extracted data:', { phone, name, email, leadData });
       
       if (phone) {
         // Set the values in the dialer inputs
         setPhoneNumber(phone);
+        setContactName(name);
+        setContactEmail(email);
         
-        // Populate contact data from leads database
-        populateContactFromLeads(phone, name);
+        // If we have full lead data, use it for better population
+        if (leadData) {
+          setContactName(leadData.name || name);
+          setContactEmail(leadData.email || email);
+          console.log('📞 [UnifiedDialer] Using full lead data:', leadData);
+        } else {
+          // Fallback to lookup in local leads
+          populateContactFromLeads(phone, name);
+        }
         
-        console.log('📞 [UnifiedDialer] Updated state with phone and name');
+        // Auto-expand email panel if we have an email
+        if (email || leadData?.email) {
+          setIsEmailExpanded(true);
+          console.log('📞 [UnifiedDialer] Auto-expanded email panel');
+        }
+        
+        console.log('📞 [UnifiedDialer] Updated state with phone, name, and email');
         
         // Show immediate feedback that values were received
         toast({
           title: "Lead Selected",
-          description: `Ready to call ${name || phone}. Check the dialer drawer.`,
+          description: `Ready to call ${name || phone}. Dialer is populated and ready.`,
         });
       }
     };
@@ -304,7 +320,7 @@ const UnifiedDialer = ({ onCallInitiated, disabled }: UnifiedDialerProps) => {
       console.log('📞 [UnifiedDialer] Cleaning up event listener...');
       window.removeEventListener("unifiedDialerCall", handleUnifiedDialerCall as EventListener);
     };
-  }, []);
+  }, [toast]);
 
   // Email template functions
   const prepareEmailPreview = () => {

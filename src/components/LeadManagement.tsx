@@ -187,32 +187,28 @@ const LeadManagement = ({ userRole }: LeadManagementProps) => {
         )
       );
 
-      // Dispatch event to UnifiedDialer with proper structure
+      // Get full lead data for the dialer
+      const fullLead = leads.find(l => l.id === leadId);
+      
+      // Dispatch comprehensive event to UnifiedDialer
       const callEvent = new CustomEvent('unifiedDialerCall', { 
         detail: {
-          phone: phone,
-          name: leadName,
-          leadId: leadId.toString(),
-          contactName: leadName,
           phoneNumber: phone,
-          notes: `Call initiated from Lead Management for ${leadName}`,
-          source: 'LeadManagement'
+          contactName: leadName,
+          contactEmail: fullLead?.email || '',
+          leadId: leadId.toString(),
+          source: 'LeadManagement',
+          autoOpenDrawer: true, // Signal to auto-open the drawer
+          leadData: fullLead // Pass full lead data
         }
       });
       
       console.log('📞 [LeadManagement] Dispatching call event:', callEvent.detail);
       window.dispatchEvent(callEvent);
 
-      // Also try alternative event names for better compatibility
-      const alternativeEvents = ['initiateCall', 'dialLead', 'callLead'];
-      alternativeEvents.forEach(eventName => {
-        const altEvent = new CustomEvent(eventName, { detail: callEvent.detail });
-        window.dispatchEvent(altEvent);
-      });
-
       toast({
         title: "Call Request Sent",
-        description: `Calling ${leadName} via UnifiedDialer...`,
+        description: `Opening dialer for ${leadName}...`,
       });
 
       // Send Discord notification
