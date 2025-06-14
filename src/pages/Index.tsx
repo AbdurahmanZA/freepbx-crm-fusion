@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import LeadManagement from "@/components/LeadManagement";
@@ -45,6 +46,7 @@ const IndexPage = () => {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("leads");
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [dialerInitialData, setDialerInitialData] = useState<any>(null);
 
   // Call history state
   const [callRecords, setCallRecords] = useState<CallRecord[]>([]);
@@ -95,6 +97,7 @@ const IndexPage = () => {
       console.log('📞 [Index] Received dialer request:', event.detail);
       
       if (event.detail?.autoOpenDrawer) {
+        setDialerInitialData(event.detail); // Set data for the dialer
         setDrawerOpen(true);
         toast({
           title: "Dialer Opened",
@@ -106,6 +109,16 @@ const IndexPage = () => {
     window.addEventListener('unifiedDialerCall', handleDialerRequest as EventListener);
     return () => window.removeEventListener('unifiedDialerCall', handleDialerRequest as EventListener);
   }, [toast]);
+
+  const handleCallUpdate = (callData: CallRecord) => {
+    const records = callRecordsService.getRecords();
+    const existing = records.find(r => r.id === callData.id);
+    if (existing) {
+      callRecordsService.updateRecord(callData.id, callData);
+    } else {
+      callRecordsService.addRecord(callData);
+    }
+  };
 
   return (
     <div className="space-y-8 pb-20">
@@ -215,7 +228,11 @@ const IndexPage = () => {
           
           <div className="px-4 space-y-6 overflow-y-auto">
             {/* Dialer */}
-            <UnifiedDialer disabled={false} onCallInitiated={() => {}} />
+            <UnifiedDialer 
+              disabled={false} 
+              onCallInitiated={handleCallUpdate}
+              initialData={dialerInitialData}
+            />
             
             {/* Recent Calls */}
             <Card>

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from "react";
 import {
   Card,
@@ -29,9 +28,15 @@ interface UnifiedDialerProps {
     leadId?: string;
   }) => void;
   disabled: boolean;
+  initialData?: {
+    phoneNumber?: string;
+    contactName?: string;
+    contactEmail?: string;
+    leadData?: any;
+  };
 }
 
-const UnifiedDialer = ({ onCallInitiated, disabled }: UnifiedDialerProps) => {
+const UnifiedDialer = ({ onCallInitiated, disabled, initialData }: UnifiedDialerProps) => {
   const { toast } = useToast();
   const { isConnected, originateCall, lastEvent, callEvents } = useAMIContext();
   const { user } = useAuth();
@@ -58,6 +63,25 @@ const UnifiedDialer = ({ onCallInitiated, disabled }: UnifiedDialerProps) => {
     const saved = localStorage.getItem('email_templates');
     return saved ? JSON.parse(saved) : [];
   };
+
+  // This new useEffect populates the dialer when props are received
+  useEffect(() => {
+    if (initialData) {
+      console.log('📞 [UnifiedDialer] Received initialData prop:', initialData);
+      
+      const phone = initialData.phoneNumber || "";
+      const name = initialData.contactName || (initialData.leadData?.name) || "";
+      const email = initialData.contactEmail || (initialData.leadData?.email) || "";
+      
+      setPhoneNumber(phone);
+      setContactName(name);
+      setContactEmail(email);
+
+      if (email) {
+        setIsEmailExpanded(true);
+      }
+    }
+  }, [initialData]);
 
   // Monitor AMI events for call status updates
   useEffect(() => {
