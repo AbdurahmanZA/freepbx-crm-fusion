@@ -2,8 +2,6 @@
 import { Phone, Settings, User, Users } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAMIContext } from "@/contexts/AMIContext";
-import UnifiedDialer from "@/components/unified-dialer/UnifiedDialer";
-import { ThemePicker } from "@/components/ThemePicker";
 import {
   Sidebar,
   SidebarContent,
@@ -61,26 +59,6 @@ export function AppSidebar({ onCallInitiated }: AppSidebarProps) {
       </SidebarHeader>
 
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>Dialer</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <UnifiedDialer onCallInitiated={onCallInitiated} disabled={false} />
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarSeparator />
-
-        <SidebarGroup>
-          <SidebarGroupLabel>Settings</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <div className="p-3">
-              <ThemePicker />
-            </div>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarSeparator />
-
         <SidebarGroup>
           <SidebarGroupLabel>Quick Actions</SidebarGroupLabel>
           <SidebarGroupContent>
