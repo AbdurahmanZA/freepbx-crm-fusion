@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { simpleEmailService } from "@/services/simpleEmailService";
+import { simpleEmailService, SimpleEmailTemplate } from "@/services/simpleEmailService";
 import {
   Users,
   Plus,
@@ -62,14 +62,6 @@ interface Lead {
   tags: string[];
 }
 
-interface EmailTemplate {
-  id: string;
-  name: string;
-  subject: string;
-  body: string;
-  type: string;
-}
-
 const initialLead: Lead = {
   id: "",
   name: "",
@@ -106,7 +98,7 @@ const LeadManagement = () => {
   const [sortDirection, setSortDirection] = useState("desc");
   const [showEmailDialog, setShowEmailDialog] = useState(false);
   const [selectedEmailTemplate, setSelectedEmailTemplate] = useState<string | null>(null);
-  const [emailTemplates, setEmailTemplates] = useState<EmailTemplate[]>([]);
+  const [emailTemplates, setEmailTemplates] = useState<SimpleEmailTemplate[]>([]);
   const [isEmailLoading, setIsEmailLoading] = useState(false);
 
   useEffect(() => {
@@ -616,7 +608,7 @@ const LeadManagement = () => {
             </div>
             <div>
               <Label htmlFor="status">Status</Label>
-              <Select id="status" name="status" value={currentLead.status} onValueChange={(value) => handleSelectChange({ target: { name: 'status', value } } as any)}>
+              <Select value={currentLead.status} onValueChange={(value) => handleSelectChange({ target: { name: 'status', value } } as any)}>
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select a status" />
                 </SelectTrigger>
@@ -630,7 +622,7 @@ const LeadManagement = () => {
             </div>
             <div>
               <Label htmlFor="priority">Priority</Label>
-              <Select id="priority" name="priority" value={currentLead.priority} onValueChange={(value) => handleSelectChange({ target: { name: 'priority', value } } as any)}>
+              <Select value={currentLead.priority} onValueChange={(value) => handleSelectChange({ target: { name: 'priority', value } } as any)}>
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select priority" />
                 </SelectTrigger>
