@@ -7,7 +7,6 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AMIProvider } from "@/contexts/AMIContext";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import LoginForm from "@/components/auth/LoginForm";
-import Header from "@/components/layout/Header";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 
@@ -33,7 +32,6 @@ const AppRoutes = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header />
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
