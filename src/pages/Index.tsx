@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import LeadManagement from "@/components/LeadManagement";
@@ -173,13 +174,13 @@ const IndexPage = () => {
   // Handle bottom bar tab clicks with proper state management
   const handleBottomBarTabClick = (tab: "dialer" | "email" | "calls") => {
     console.log("IndexPage: Bottom bar tab clicked:", tab);
-    if (bottomBarTab === tab) {
-      // If same tab is clicked, close the drawer
-      setBottomBarTab(null);
-    } else {
-      // Open the new tab
-      setBottomBarTab(tab);
-    }
+    setBottomBarTab(tab);
+  };
+
+  // Handle drawer close
+  const handleDrawerClose = () => {
+    console.log("IndexPage: Closing drawer");
+    setBottomBarTab(null);
   };
 
   // --- BOTTOM BAR DRAWER PANELS ---
@@ -310,82 +311,43 @@ const IndexPage = () => {
       </Tabs>
 
       {/* --- BOTTOM BAR DRAWER --- */}
-      <Drawer open={!!bottomBarTab} onOpenChange={open => {
-        console.log("IndexPage: Drawer open change:", open);
-        if (!open) setBottomBarTab(null);
+      <Drawer open={!!bottomBarTab} onOpenChange={(open) => {
+        console.log("IndexPage: Drawer onOpenChange:", open);
+        if (!open) {
+          handleDrawerClose();
+        }
       }}>
-        <DrawerTrigger asChild>
-          <div className="fixed bottom-0 left-0 right-0 z-50">
-            <div className="bg-card border-t px-4 py-2 flex items-center justify-between shadow-lg">
-              <div className="flex gap-2 flex-1 justify-center">
-                {/* Dialer */}
-                <Button
-                  size="icon"
-                  variant={bottomBarTab === "dialer" ? "default" : "ghost"}
-                  onClick={() => handleBottomBarTabClick("dialer")}
-                  className={cn("rounded-full", bottomBarTab === "dialer" ? "bg-primary text-primary-foreground" : "")}
-                  aria-label="Open Dialer"
-                >
-                  <Phone className="h-5 w-5" />
-                </Button>
-                {/* Email Templates */}
-                <Button
-                  size="icon"
-                  variant={bottomBarTab === "email" ? "default" : "ghost"}
-                  onClick={() => handleBottomBarTabClick("email")}
-                  className={cn("rounded-full", bottomBarTab === "email" ? "bg-primary text-primary-foreground" : "")}
-                  aria-label="Email Templates"
-                >
-                  <FileText className="h-5 w-5" />
-                </Button>
-                {/* Recent Calls */}
-                <Button
-                  size="icon"
-                  variant={bottomBarTab === "calls" ? "default" : "ghost"}
-                  onClick={() => handleBottomBarTabClick("calls")}
-                  className={cn("rounded-full", bottomBarTab === "calls" ? "bg-primary text-primary-foreground" : "")}
-                  aria-label="Recent Calls"
-                >
-                  <Clock className="h-5 w-5" />
-                </Button>
-              </div>
-              {/* If drawer open, show explicit close btn */}
-              {!!bottomBarTab && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="ml-2"
-                  aria-label="Close Drawer"
-                  onClick={() => setBottomBarTab(null)}
-                >
-                  <CloseIcon className="h-4 w-4" />
-                </Button>
-              )}
-            </div>
-          </div>
-        </DrawerTrigger>
         <DrawerContent className="max-h-[85vh]">
           <DrawerHeader>
-            <DrawerTitle className="flex items-center gap-2">
-              {/* Icon & title per tab */}
-              {bottomBarTab === "dialer" && (
-                <>
-                  <Phone className="h-5 w-5" />
-                  Unified Dialer
-                </>
-              )}
-              {bottomBarTab === "email" && (
-                <>
-                  <FileText className="h-5 w-5" />
-                  Email Templates
-                </>
-              )}
-              {bottomBarTab === "calls" && (
-                <>
-                  <Clock className="h-5 w-5" />
-                  Recent Calls
-                </>
-              )}
+            <DrawerTitle className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                {bottomBarTab === "dialer" && (
+                  <>
+                    <Phone className="h-5 w-5" />
+                    Unified Dialer
+                  </>
+                )}
+                {bottomBarTab === "email" && (
+                  <>
+                    <FileText className="h-5 w-5" />
+                    Email Templates
+                  </>
+                )}
+                {bottomBarTab === "calls" && (
+                  <>
+                    <Clock className="h-5 w-5" />
+                    Recent Calls
+                  </>
+                )}
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleDrawerClose}
+                className="h-6 w-6"
+              >
+                <CloseIcon className="h-4 w-4" />
+              </Button>
             </DrawerTitle>
             <DrawerDescription>
               {bottomBarTab === "dialer" && "Make calls and manage contact information"}
@@ -396,6 +358,44 @@ const IndexPage = () => {
           {renderDrawerPanel()}
         </DrawerContent>
       </Drawer>
+
+      {/* --- FIXED BOTTOM BAR --- */}
+      <div className="fixed bottom-0 left-0 right-0 z-50">
+        <div className="bg-card border-t px-4 py-2 flex items-center justify-center shadow-lg">
+          <div className="flex gap-2">
+            {/* Dialer */}
+            <Button
+              size="icon"
+              variant={bottomBarTab === "dialer" ? "default" : "ghost"}
+              onClick={() => handleBottomBarTabClick("dialer")}
+              className={cn("rounded-full", bottomBarTab === "dialer" ? "bg-primary text-primary-foreground" : "")}
+              aria-label="Open Dialer"
+            >
+              <Phone className="h-5 w-5" />
+            </Button>
+            {/* Email Templates */}
+            <Button
+              size="icon"
+              variant={bottomBarTab === "email" ? "default" : "ghost"}
+              onClick={() => handleBottomBarTabClick("email")}
+              className={cn("rounded-full", bottomBarTab === "email" ? "bg-primary text-primary-foreground" : "")}
+              aria-label="Email Templates"
+            >
+              <FileText className="h-5 w-5" />
+            </Button>
+            {/* Recent Calls */}
+            <Button
+              size="icon"
+              variant={bottomBarTab === "calls" ? "default" : "ghost"}
+              onClick={() => handleBottomBarTabClick("calls")}
+              className={cn("rounded-full", bottomBarTab === "calls" ? "bg-primary text-primary-foreground" : "")}
+              aria-label="Recent Calls"
+            >
+              <Clock className="h-5 w-5" />
+            </Button>
+          </div>
+        </div>
+      </div>
       {/* --- END BOTTOM BAR --- */}
     </div>
   );
