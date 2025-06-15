@@ -1,3 +1,4 @@
+
 import * as React from "react"
 import { Drawer as DrawerPrimitive } from "vaul"
 
@@ -20,13 +21,15 @@ const DrawerPortal = DrawerPrimitive.Portal
 
 const DrawerClose = DrawerPrimitive.Close
 
+// OVERLAY: disable interactions when drawer is open by removing overlay, or making it click-through and transparent.
 const DrawerOverlay = React.forwardRef<
   React.ElementRef<typeof DrawerPrimitive.Overlay>,
   React.ComponentPropsWithoutRef<typeof DrawerPrimitive.Overlay>
 >(({ className, ...props }, ref) => (
   <DrawerPrimitive.Overlay
     ref={ref}
-    className={cn("fixed inset-0 z-50 bg-black/80", className)}
+    // Pointer-events-none means you can click through overlay.
+    className={cn("fixed inset-0 z-50 bg-transparent pointer-events-none", className)}
     {...props}
   />
 ))
@@ -37,17 +40,19 @@ const DrawerContent = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof DrawerPrimitive.Content>
 >(({ className, children, ...props }, ref) => (
   <DrawerPortal>
+    {/* Overlay is now transparent and allows clicks through */}
     <DrawerOverlay />
     <DrawerPrimitive.Content
       ref={ref}
       className={cn(
         "fixed inset-x-0 bottom-0 z-50 mt-24 flex h-auto flex-col rounded-t-[10px] border bg-background",
-        "sm:left-auto sm:right-0 sm:max-w-xl sm:w-1/2",
+        "sm:left-auto sm:right-0 sm:max-w-xl sm:w-[32rem]", // Restore wide drawer width
         className
       )}
       {...props}
     >
-      <div className="mx-auto mt-4 h-2 w-[50px] rounded-full bg-muted" />
+      {/* Drawer handle: reduce thickness/height and width */}
+      <div className="mx-auto mt-2 h-1 w-[40px] rounded-full bg-muted" />
       {children}
     </DrawerPrimitive.Content>
   </DrawerPortal>
