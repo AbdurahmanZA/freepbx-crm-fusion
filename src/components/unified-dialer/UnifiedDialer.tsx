@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from "react";
 import {
   Card,
@@ -11,11 +10,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Phone, PhoneCall, Users, User, Clock, ChevronDown, Mail } from "lucide-react";
+import { Phone, PhoneCall, Users, User, Clock, ChevronDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAMIContext } from "@/contexts/AMIContext";
 import { useAuth } from "@/contexts/AuthContext";
-import SimpleEmailPanel from "./SimpleEmailPanel";
 
 interface UnifiedDialerProps {
   onCallInitiated: (callData: {
@@ -42,7 +40,6 @@ const UnifiedDialer = ({ onCallInitiated, disabled, initialData }: UnifiedDialer
   const { user } = useAuth();
   const [phoneNumber, setPhoneNumber] = useState("");
   const [contactName, setContactName] = useState("");
-  const [contactEmail, setContactEmail] = useState("");
   const [activeCall, setActiveCall] = useState<{
     id: string;
     uniqueId?: string;
@@ -66,13 +63,11 @@ const UnifiedDialer = ({ onCallInitiated, disabled, initialData }: UnifiedDialer
     if (initialData) {
       const phone = initialData.phoneNumber || "";
       const name = initialData.contactName || (initialData.leadData?.name) || "";
-      const email = initialData.contactEmail || (initialData.leadData?.email) || "";
       
-      console.log('📧 [UnifiedDialer] Setting initial data:', { phone, name, email });
+      console.log('📞 [UnifiedDialer] Setting initial data:', { phone, name });
       
       setPhoneNumber(phone);
       setContactName(name);
-      setContactEmail(email);
     }
   }, [initialData]);
 
@@ -87,12 +82,10 @@ const UnifiedDialer = ({ onCallInitiated, disabled, initialData }: UnifiedDialer
     });
 
     if (matchedLead) {
-      console.log('📧 [UnifiedDialer] Found matching lead:', matchedLead);
+      console.log('📞 [UnifiedDialer] Found matching lead:', matchedLead);
       setContactName(matchedLead.name || name || "");
-      setContactEmail(matchedLead.email || "");
     } else {
       setContactName(name || "");
-      setContactEmail("");
     }
   };
 
@@ -275,107 +268,96 @@ const UnifiedDialer = ({ onCallInitiated, disabled, initialData }: UnifiedDialer
   };
 
   return (
-    <div className="space-y-2">
-      <Card className="h-fit shadow-sm border flex flex-col w-full">
-        <CardHeader className="pb-1 px-3 pt-2">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Phone className="h-4 w-4 text-primary" />
-              <CardTitle className="text-sm font-medium">Unified Dialer</CardTitle>
-            </div>
-            <div className="flex items-center gap-1">
-              <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
-              <span className="text-xs text-muted-foreground">
-                {isConnected ? 'Connected' : 'Offline'}
-              </span>
-            </div>
+    <Card className="h-fit shadow-sm border flex flex-col w-full">
+      <CardHeader className="pb-1 px-3 pt-2">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Phone className="h-4 w-4 text-primary" />
+            <CardTitle className="text-sm font-medium">Unified Dialer</CardTitle>
           </div>
-        </CardHeader>
+          <div className="flex items-center gap-1">
+            <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
+            <span className="text-xs text-muted-foreground">
+              {isConnected ? 'Connected' : 'Offline'}
+            </span>
+          </div>
+        </div>
+      </CardHeader>
 
-        <CardContent className="space-y-2 px-3 py-2 !pt-0">
-          {/* Agent Info - Compact */}
-          <div className="flex items-center gap-2 text-xs">
-            <User className="h-3 w-3 text-muted-foreground" />
-            <span className="font-medium">{user?.name}</span>
-            {user?.extension && (
-              <span className="text-muted-foreground">Ext: {user.extension}</span>
-            )}
-          </div>
-          
-          {!user?.extension && (
-            <p className="text-destructive text-xs">No extension assigned</p>
+      <CardContent className="space-y-2 px-3 py-2 !pt-0">
+        {/* Agent Info - Compact */}
+        <div className="flex items-center gap-2 text-xs">
+          <User className="h-3 w-3 text-muted-foreground" />
+          <span className="font-medium">{user?.name}</span>
+          {user?.extension && (
+            <span className="text-muted-foreground">Ext: {user.extension}</span>
           )}
+        </div>
+        
+        {!user?.extension && (
+          <p className="text-destructive text-xs">No extension assigned</p>
+        )}
 
-          {/* Active call status */}
-          {activeCall && (
-            <div className="p-2 bg-green-50 border border-green-200 rounded">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center">
-                    <User className="h-3 w-3 text-green-600" />
-                  </div>
-                  <div>
-                    <div className="text-sm font-medium">{activeCall.leadName}</div>
-                    <div className="text-xs text-gray-600">{activeCall.phone}</div>
-                  </div>
+        {/* Active call status */}
+        {activeCall && (
+          <div className="p-2 bg-green-50 border border-green-200 rounded">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center">
+                  <User className="h-3 w-3 text-green-600" />
                 </div>
-                <div className="text-xs font-mono font-bold text-green-700">
-                  {activeCall.status === 'ringing' ? 'Ringing' :
-                   activeCall.status === 'on-hold' ? 'On Hold' : 'Connected'}
+                <div>
+                  <div className="text-sm font-medium">{activeCall.leadName}</div>
+                  <div className="text-xs text-gray-600">{activeCall.phone}</div>
                 </div>
               </div>
+              <div className="text-xs font-mono font-bold text-green-700">
+                {activeCall.status === 'ringing' ? 'Ringing' :
+                 activeCall.status === 'on-hold' ? 'On Hold' : 'Connected'}
+              </div>
             </div>
-          )}
-
-          {/* Dialer Panel */}
-          <div className="grid grid-cols-2 gap-2">
-            <Input
-              value={phoneNumber}
-              onChange={e => {
-                setPhoneNumber(e.target.value);
-                // Auto-populate from leads when phone changes
-                if (e.target.value.length > 7) {
-                  populateContactFromLeads(e.target.value);
-                }
-              }}
-              placeholder="Phone number"
-              className="text-sm h-8"
-            />
-            <Input
-              value={contactName}
-              onChange={e => setContactName(e.target.value)}
-              placeholder="Contact name"
-              className="text-sm h-8"
-            />
           </div>
+        )}
 
-          <Button
-            onClick={onCall}
-            disabled={!user?.extension || !phoneNumber || !isConnected}
-            className="w-full h-8 text-sm"
-            size="sm"
-          >
-            <PhoneCall className="h-3 w-3 mr-2" />
-            {!isConnected ? 'AMI Not Connected' : !user?.extension ? 'No Extension' : 'Call'}
-          </Button>
+        {/* Dialer Panel */}
+        <div className="grid grid-cols-2 gap-2">
+          <Input
+            value={phoneNumber}
+            onChange={e => {
+              setPhoneNumber(e.target.value);
+              // Auto-populate from leads when phone changes
+              if (e.target.value.length > 7) {
+                populateContactFromLeads(e.target.value);
+              }
+            }}
+            placeholder="Phone number"
+            className="text-sm h-8"
+          />
+          <Input
+            value={contactName}
+            onChange={e => setContactName(e.target.value)}
+            placeholder="Contact name"
+            className="text-sm h-8"
+          />
+        </div>
 
-          {!isConnected && (
-            <p className="text-xs text-muted-foreground text-center">
-              Connect AMI in Integration Settings
-            </p>
-          )}
-        </CardContent>
-      </Card>
+        <Button
+          onClick={onCall}
+          disabled={!user?.extension || !phoneNumber || !isConnected}
+          className="w-full h-8 text-sm"
+          size="sm"
+        >
+          <PhoneCall className="h-3 w-3 mr-2" />
+          {!isConnected ? 'AMI Not Connected' : !user?.extension ? 'No Extension' : 'Call'}
+        </Button>
 
-      {/* Simplified Email Panel */}
-      <SimpleEmailPanel
-        contactEmail={contactEmail}
-        setContactEmail={setContactEmail}
-        contactName={contactName}
-        phoneNumber={phoneNumber}
-        leadId={initialData?.leadData?.id}
-      />
-    </div>
+        {!isConnected && (
+          <p className="text-xs text-muted-foreground text-center">
+            Connect AMI in Integration Settings
+          </p>
+        )}
+      </CardContent>
+    </Card>
   );
 };
 

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import LeadManagement from "@/components/LeadManagement";
@@ -13,7 +12,7 @@ import { callRecordsService, CallRecord } from "@/services/callRecordsService";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAMIContext } from "@/contexts/AMIContext";
 import DatabaseManagementCard from "@/components/integration/DatabaseManagementCard";
-import EmailTemplateCard from "@/components/integration/EmailTemplateCard";
+import EmailCard from "@/components/email/EmailCard";
 import {
   FileText,
   Calendar,
@@ -201,9 +200,12 @@ const IndexPage = () => {
     if (bottomBarTab === "email") {
       return (
         <div className="px-4 py-3 space-y-6 overflow-y-auto">
-          <div className="max-w-2xl mx-auto">
-            <EmailTemplateCard templates={emailTemplates} onTemplateUpdate={updateEmailTemplates} />
-          </div>
+          <EmailCard 
+            initialContactEmail={dialerInitialData?.contactEmail}
+            initialContactName={dialerInitialData?.contactName}
+            initialPhoneNumber={dialerInitialData?.phoneNumber}
+            initialLeadId={dialerInitialData?.leadData?.id}
+          />
         </div>
       );
     }
@@ -300,7 +302,12 @@ const IndexPage = () => {
         </TabsContent>
         <TabsContent value="email-templates">
           <div className="max-w-4xl mx-auto px-1">
-            <EmailTemplateCard templates={emailTemplates} onTemplateUpdate={updateEmailTemplates} />
+            <EmailCard 
+              initialContactEmail={dialerInitialData?.contactEmail}
+              initialContactName={dialerInitialData?.contactName}
+              initialPhoneNumber={dialerInitialData?.phoneNumber}
+              initialLeadId={dialerInitialData?.leadData?.id}
+            />
           </div>
         </TabsContent>
         {canManageUsers && (
@@ -329,8 +336,8 @@ const IndexPage = () => {
                 )}
                 {bottomBarTab === "email" && (
                   <>
-                    <FileText className="h-5 w-5" />
-                    Email Templates
+                    <Mail className="h-5 w-5" />
+                    Email Center
                   </>
                 )}
                 {bottomBarTab === "calls" && (
@@ -351,7 +358,7 @@ const IndexPage = () => {
             </DrawerTitle>
             <DrawerDescription>
               {bottomBarTab === "dialer" && "Make calls and manage contact information"}
-              {bottomBarTab === "email" && "Create, preview and edit your email templates"}
+              {bottomBarTab === "email" && "Send emails using templates and manage email history"}
               {bottomBarTab === "calls" && "View your most recent calls"}
             </DrawerDescription>
           </DrawerHeader>
@@ -373,15 +380,15 @@ const IndexPage = () => {
             >
               <Phone className="h-5 w-5" />
             </Button>
-            {/* Email Templates */}
+            {/* Email */}
             <Button
               size="icon"
               variant={bottomBarTab === "email" ? "default" : "ghost"}
               onClick={() => handleBottomBarTabClick("email")}
               className={cn("rounded-full", bottomBarTab === "email" ? "bg-primary text-primary-foreground" : "")}
-              aria-label="Email Templates"
+              aria-label="Email Center"
             >
-              <FileText className="h-5 w-5" />
+              <Mail className="h-5 w-5" />
             </Button>
             {/* Recent Calls */}
             <Button
