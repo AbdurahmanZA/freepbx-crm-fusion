@@ -47,6 +47,12 @@ const SMTPConfigCard = ({
   const { toast } = useToast();
   const [showPassword, setShowPassword] = useState(false);
   
+  // Get the current server URL for email service
+  const getEmailServiceUrl = () => {
+    const hostname = window.location.hostname;
+    return `http://${hostname}:3002/api/test-smtp`;
+  };
+
   // Get email logs from localStorage
   const getEmailLogs = (): EmailLog[] => {
     try {
@@ -61,7 +67,7 @@ const SMTPConfigCard = ({
   const handleTestConnection = async () => {
     try {
       // Use the correct URL for your email service
-      const response = await fetch('http://localhost:3002/api/test-smtp', {
+      const response = await fetch(getEmailServiceUrl(), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

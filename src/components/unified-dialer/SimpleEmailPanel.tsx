@@ -40,6 +40,13 @@ const SimpleEmailPanel: React.FC<SimpleEmailPanelProps> = ({
 
   const templates = simpleEmailService.getTemplates();
 
+  // Get the current server URL
+  const getEmailServiceUrl = () => {
+    const hostname = window.location.hostname;
+    // Use the current hostname with port 3002 for the email service
+    return `http://${hostname}:3002/api/send-email`;
+  };
+
   const handleTemplateSelect = (templateId: string) => {
     setSelectedTemplateId(templateId);
     const template = templates.find(t => t.id === templateId);
@@ -134,7 +141,7 @@ const SimpleEmailPanel: React.FC<SimpleEmailPanelProps> = ({
       console.log('📧 [SimpleEmailPanel] Email payload:', emailPayload);
 
       // Use the correct URL for your email service
-      const emailServiceUrl = 'http://localhost:3002/api/send-email';
+      const emailServiceUrl = getEmailServiceUrl();
       console.log('📧 [SimpleEmailPanel] Using email service URL:', emailServiceUrl);
 
       const response = await fetch(emailServiceUrl, {
