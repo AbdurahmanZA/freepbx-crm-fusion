@@ -16,6 +16,7 @@ import { useAMIContext } from "@/contexts/AMIContext";
 import { useAuth } from "@/contexts/AuthContext";
 import UnifiedDialerEmailPanel from "./UnifiedDialerEmailPanel";
 import { buildTemplateVars, findMatchedLead } from "./leadUtils";
+import { emailLogService } from "@/services/emailLogService";
 
 interface UnifiedDialerProps {
   onCallInitiated: (callData: {
@@ -332,14 +333,31 @@ const UnifiedDialer = ({ onCallInitiated, disabled, initialData }: UnifiedDialer
 
   const sendEmailTemplate = () => {
     if (!emailPreviewData) return;
-    
+
+    // Save to email logs
+    emailLogService.logEmail({
+      to: emailPreviewData.to,
+      subject: emailPreviewData.subject,
+      body: emailPreviewData.body,
+      templateName: emailPreviewData.templateName,
+      agent: user?.name || "Unknown",
+      // Try to log lead/contact info
+      leadId: initialData?.leadData?.id || undefined,
+      leadName: contactName,
+      phone: phoneNumber,
+      extra: {
+        dialerPanel: true,
+        // you may add more as needed
+      }
+    });
+
     // Here you would implement actual email sending
     // For now, just show success message
     toast({
       title: "Email Sent",
       description: `Email sent to ${emailPreviewData.to}`,
     });
-    
+
     setShowEmailPreview(false);
     setIsEmailExpanded(false);
   };
