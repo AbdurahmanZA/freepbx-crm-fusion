@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import LeadManagement from "@/components/LeadManagement";
@@ -56,15 +55,29 @@ const IndexPage = () => {
 
   // Call history state
   const [callRecords, setCallRecords] = useState<CallRecord[]>([]);
+  const [callRecordsLoading, setCallRecordsLoading] = useState(false);
 
   useEffect(() => {
-    // Initial fetch
-    setCallRecords(callRecordsService.getRecords());
-    // Subscribe for updates
-    const unsubscribe = callRecordsService.subscribe((records) =>
-      setCallRecords(records)
-    );
-    return unsubscribe;
+    console.log("IndexPage: Loading call records...");
+    setCallRecordsLoading(true);
+    try {
+      // Initial fetch
+      const records = callRecordsService.getRecords();
+      console.log("IndexPage: Loaded call records:", records.length);
+      setCallRecords(records);
+      
+      // Subscribe for updates
+      const unsubscribe = callRecordsService.subscribe((records) => {
+        console.log("IndexPage: Call records updated:", records.length);
+        setCallRecords(records);
+      });
+      
+      setCallRecordsLoading(false);
+      return unsubscribe;
+    } catch (error) {
+      console.error("IndexPage: Error loading call records:", error);
+      setCallRecordsLoading(false);
+    }
   }, []);
 
   if (!user) return null;
@@ -157,8 +170,22 @@ const IndexPage = () => {
     }
   };
 
+  // Handle bottom bar tab clicks with proper state management
+  const handleBottomBarTabClick = (tab: "dialer" | "email" | "calls") => {
+    console.log("IndexPage: Bottom bar tab clicked:", tab);
+    if (bottomBarTab === tab) {
+      // If same tab is clicked, close the drawer
+      setBottomBarTab(null);
+    } else {
+      // Open the new tab
+      setBottomBarTab(tab);
+    }
+  };
+
   // --- BOTTOM BAR DRAWER PANELS ---
   const renderDrawerPanel = () => {
+    console.log("IndexPage: Rendering drawer panel for tab:", bottomBarTab);
+    
     if (bottomBarTab === "dialer") {
       return (
         <div className="px-4 space-y-6 overflow-y-auto">
@@ -180,6 +207,7 @@ const IndexPage = () => {
       );
     }
     if (bottomBarTab === "calls") {
+      console.log("IndexPage: Rendering calls panel, loading:", callRecordsLoading, "records:", callRecords.length);
       return (
         <div className="px-4 py-3 space-y-6 overflow-y-auto">
           <Card>
@@ -190,7 +218,14 @@ const IndexPage = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <CallHistory calls={callRecords.slice(0, 10)} />
+              {callRecordsLoading ? (
+                <div className="text-center py-4">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                  <p className="mt-2 text-sm text-muted-foreground">Loading calls...</p>
+                </div>
+              ) : (
+                <CallHistory calls={callRecords.slice(0, 10)} />
+              )}
             </CardContent>
           </Card>
         </div>
@@ -240,7 +275,6 @@ const IndexPage = () => {
             Email Templates
           </TabsTrigger>
           {canManageUsers && (
-            // User Management tab removed - open via header button instead
             <TabsTrigger value="users" style={{ display: "none" }}>
               <Users className="w-4 h-4 shrink-0" />
               User Management
@@ -277,10 +311,10 @@ const IndexPage = () => {
 
       {/* --- BOTTOM BAR DRAWER --- */}
       <Drawer open={!!bottomBarTab} onOpenChange={open => {
+        console.log("IndexPage: Drawer open change:", open);
         if (!open) setBottomBarTab(null);
       }}>
         <DrawerTrigger asChild>
-          {/* The bar is now always visible, even if no panel is open */}
           <div className="fixed bottom-0 left-0 right-0 z-50">
             <div className="bg-card border-t px-4 py-2 flex items-center justify-between shadow-lg">
               <div className="flex gap-2 flex-1 justify-center">
@@ -288,7 +322,7 @@ const IndexPage = () => {
                 <Button
                   size="icon"
                   variant={bottomBarTab === "dialer" ? "default" : "ghost"}
-                  onClick={() => setBottomBarTab(bottomBarTab === "dialer" ? null : "dialer")}
+                  onClick={() => handleBottomBarTabClick("dialer")}
                   className={cn("rounded-full", bottomBarTab === "dialer" ? "bg-primary text-primary-foreground" : "")}
                   aria-label="Open Dialer"
                 >
@@ -298,17 +332,17 @@ const IndexPage = () => {
                 <Button
                   size="icon"
                   variant={bottomBarTab === "email" ? "default" : "ghost"}
-                  onClick={() => setBottomBarTab(bottomBarTab === "email" ? null : "email")}
+                  onClick={() => handleBottomBarTabClick("email")}
                   className={cn("rounded-full", bottomBarTab === "email" ? "bg-primary text-primary-foreground" : "")}
                   aria-label="Email Templates"
                 >
-                  <Mail className="h-5 w-5" />
+                  <FileText className="h-5 w-5" />
                 </Button>
                 {/* Recent Calls */}
                 <Button
                   size="icon"
                   variant={bottomBarTab === "calls" ? "default" : "ghost"}
-                  onClick={() => setBottomBarTab(bottomBarTab === "calls" ? null : "calls")}
+                  onClick={() => handleBottomBarTabClick("calls")}
                   className={cn("rounded-full", bottomBarTab === "calls" ? "bg-primary text-primary-foreground" : "")}
                   aria-label="Recent Calls"
                 >
@@ -342,7 +376,7 @@ const IndexPage = () => {
               )}
               {bottomBarTab === "email" && (
                 <>
-                  <Mail className="h-5 w-5" />
+                  <FileText className="h-5 w-5" />
                   Email Templates
                 </>
               )}
@@ -354,7 +388,7 @@ const IndexPage = () => {
               )}
             </DrawerTitle>
             <DrawerDescription>
-              {bottomBarTab === "dialer" && "Make calls and view recent call history"}
+              {bottomBarTab === "dialer" && "Make calls and manage contact information"}
               {bottomBarTab === "email" && "Create, preview and edit your email templates"}
               {bottomBarTab === "calls" && "View your most recent calls"}
             </DrawerDescription>
