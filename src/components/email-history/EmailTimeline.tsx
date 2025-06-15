@@ -24,6 +24,8 @@ const EmailTimeline: React.FC<EmailTimelineProps> = ({ emailLogs }) => {
           <div className="font-medium text-sm">{log.subject}</div>
           <div className="text-xs text-gray-700 mb-1">
             <span className="font-semibold">To:</span> {log.to}
+            <span className="mx-2">|</span>
+            <span className="font-semibold">From:</span> {log.from || "Unknown"}
           </div>
           {log.templateName && (
             <div className="text-xs text-blue-600">Template: {log.templateName}</div>

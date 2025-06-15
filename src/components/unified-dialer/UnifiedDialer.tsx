@@ -353,6 +353,7 @@ const UnifiedDialer = ({ onCallInitiated, disabled, initialData }: UnifiedDialer
     // Save to email logs with consistent leadId for timeline filtering
     emailLogService.logEmail({
       to: emailPreviewData.to,
+      from: user?.email || "Unknown", // ADDED field for sender
       subject: emailPreviewData.subject,
       body: emailPreviewData.body,
       templateName: emailPreviewData.templateName,
