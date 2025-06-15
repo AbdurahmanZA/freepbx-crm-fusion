@@ -1,6 +1,7 @@
 
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { useAuth } from "@/contexts/AuthContext";
 import LeadManagement from "@/components/LeadManagement";
 import CallCenter from "@/components/CallCenter";
@@ -16,11 +17,11 @@ import UnifiedDialer from "@/components/unified-dialer/UnifiedDialer";
 import KnowledgeBase from "@/components/knowledge-base/KnowledgeBase";
 import CallbackCalendar from "@/components/callback-calendar/CallbackCalendar";
 import SimpleEmailHistory from "@/components/email-history/SimpleEmailHistory";
-import { ThemePicker } from "@/components/ThemePicker";
+import { AppSidebar } from "@/components/AppSidebar";
 
 const Index = () => {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState("unified-dialer");
+  const [activeTab, setActiveTab] = useState("leads");
 
   const userRole = user?.role || "agent";
 
@@ -41,7 +42,6 @@ const Index = () => {
   };
 
   const tabs = [
-    { id: "unified-dialer", label: "Unified Dialer", component: <UnifiedDialer onCallInitiated={handleCallInitiated} disabled={false} /> },
     { id: "leads", label: "Lead Management", component: <LeadManagement /> },
     { id: "call-center", label: "Call Center", component: <CallCenter userRole={userRole} /> },
     { id: "contacts", label: "Contact Manager", component: <ContactManager /> },
@@ -64,37 +64,43 @@ const Index = () => {
   const allTabs = userRole === "admin" ? [...tabs, ...adminTabs] : tabs;
 
   return (
-    <div className="container mx-auto p-4 space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">FreePBX CRM Dashboard</h1>
-          <p className="text-muted-foreground">
-            Welcome back, {user?.name} ({userRole})
-          </p>
-        </div>
-        <ThemePicker />
+    <SidebarProvider>
+      <div className="min-h-screen flex w-full">
+        <AppSidebar onCallInitiated={handleCallInitiated} />
+        <SidebarInset>
+          <div className="container mx-auto p-4 space-y-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <h1 className="text-3xl font-bold text-foreground">FreePBX CRM Dashboard</h1>
+                <p className="text-muted-foreground">
+                  Welcome back, {user?.name} ({userRole})
+                </p>
+              </div>
+            </div>
+
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <TabsList className="grid w-full grid-cols-3 lg:grid-cols-4 xl:grid-cols-8 gap-1">
+                {allTabs.map((tab) => (
+                  <TabsTrigger
+                    key={tab.id}
+                    value={tab.id}
+                    className="text-xs lg:text-sm whitespace-nowrap"
+                  >
+                    {tab.label}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+
+              {allTabs.map((tab) => (
+                <TabsContent key={tab.id} value={tab.id} className="mt-6">
+                  {tab.component}
+                </TabsContent>
+              ))}
+            </Tabs>
+          </div>
+        </SidebarInset>
       </div>
-
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-3 lg:grid-cols-6 xl:grid-cols-9 gap-1">
-          {allTabs.map((tab) => (
-            <TabsTrigger
-              key={tab.id}
-              value={tab.id}
-              className="text-xs lg:text-sm whitespace-nowrap"
-            >
-              {tab.label}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-
-        {allTabs.map((tab) => (
-          <TabsContent key={tab.id} value={tab.id} className="mt-6">
-            {tab.component}
-          </TabsContent>
-        ))}
-      </Tabs>
-    </div>
+    </SidebarProvider>
   );
 };
 

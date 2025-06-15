@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { LogOut, User, Users } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAMIContext } from "@/contexts/AMIContext";
-import { ThemeToggle } from "@/components/ThemeToggle";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 
 const Header = () => {
   const { user, logout } = useAuth();
@@ -24,6 +24,7 @@ const Header = () => {
       <div className="container mx-auto px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
+            <SidebarTrigger />
             <h1 className="text-xl font-bold text-primary">JERICHO ONE</h1>
             <Badge 
               className={`text-xs ${
@@ -37,7 +38,6 @@ const Header = () => {
           </div>
           
           <div className="flex items-center space-x-4">
-            <ThemeToggle />
             <div className="flex items-center space-x-2">
               <User className="h-4 w-4" />
               <span className="text-sm font-medium">{user.name}</span>
