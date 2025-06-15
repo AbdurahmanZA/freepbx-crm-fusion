@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import LeadManagement from "@/components/LeadManagement";
@@ -22,8 +23,9 @@ import {
   Users,
   Mail,
   Clock,
+  Phone,
   ChevronUp,
-  ChevronDown
+  X as CloseIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -38,13 +40,18 @@ import {
   DrawerTrigger,
 } from "@/components/ui/drawer";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 const IndexPage = () => {
   const { user } = useAuth();
   const { connect, isConnected } = useAMIContext();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("leads");
-  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  // BOTTOM BAR STATE: which tab is open? ("dialer" | "email" | "calls" | null)
+  const [bottomBarTab, setBottomBarTab] = useState<null | "dialer" | "email" | "calls">(null);
+
+  // Initial data to pass to dialer (if opened from lead, etc)
   const [dialerInitialData, setDialerInitialData] = useState<any>(null);
 
   // Call history state
@@ -94,7 +101,7 @@ const IndexPage = () => {
     const handleDialerRequest = (event: CustomEvent) => {
       if (event.detail?.autoOpenDrawer) {
         setDialerInitialData(event.detail); // Set data for the dialer
-        setDrawerOpen(true);
+        setBottomBarTab("dialer");
         toast({
           title: "Dialer Opened",
           description: `Ready to call ${event.detail.contactName || 'contact'}`,
@@ -150,8 +157,53 @@ const IndexPage = () => {
     }
   };
 
+  // --- BOTTOM BAR DRAWER PANELS ---
+  const renderDrawerPanel = () => {
+    if (bottomBarTab === "dialer") {
+      return (
+        <div className="px-4 space-y-6 overflow-y-auto">
+          <UnifiedDialer 
+            disabled={false} 
+            onCallInitiated={handleCallUpdate}
+            initialData={dialerInitialData}
+          />
+        </div>
+      );
+    }
+    if (bottomBarTab === "email") {
+      return (
+        <div className="px-4 py-3 space-y-6 overflow-y-auto">
+          <div className="max-w-2xl mx-auto">
+            <EmailTemplateCard templates={emailTemplates} onTemplateUpdate={updateEmailTemplates} />
+          </div>
+        </div>
+      );
+    }
+    if (bottomBarTab === "calls") {
+      return (
+        <div className="px-4 py-3 space-y-6 overflow-y-auto">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Clock className="h-4 w-4" />
+                Recent Calls
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <CallHistory calls={callRecords.slice(0, 10)} />
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
+    // No tab open
+    return null;
+  };
+
+  // --- END DRAWER PANELS ---
+
   return (
-    <div className="space-y-8 pb-20">
+    <div className="space-y-8 pb-24">
       <div className="mb-8">
         <h1 className="text-3xl font-bold tracking-tight">
           Welcome back, {user.name}
@@ -223,62 +275,94 @@ const IndexPage = () => {
         )}
       </Tabs>
 
-      {/* Bottom Drawer Dialer */}
-      <Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
+      {/* --- BOTTOM BAR DRAWER --- */}
+      <Drawer open={!!bottomBarTab} onOpenChange={open => {
+        if (!open) setBottomBarTab(null);
+      }}>
         <DrawerTrigger asChild>
+          {/* The bar is now always visible, even if no panel is open */}
           <div className="fixed bottom-0 left-0 right-0 z-50">
-            <div className="bg-primary text-primary-foreground px-4 py-3 flex items-center justify-between shadow-lg border-t">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-primary-foreground/20 rounded-full flex items-center justify-center">
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="font-semibold text-sm">Unified Dialer</h3>
-                  <p className="text-xs opacity-80">Tap to open dialer & call history</p>
-                </div>
+            <div className="bg-card border-t px-4 py-2 flex items-center justify-between shadow-lg">
+              <div className="flex gap-2 flex-1 justify-center">
+                {/* Dialer */}
+                <Button
+                  size="icon"
+                  variant={bottomBarTab === "dialer" ? "default" : "ghost"}
+                  onClick={() => setBottomBarTab(bottomBarTab === "dialer" ? null : "dialer")}
+                  className={cn("rounded-full", bottomBarTab === "dialer" ? "bg-primary text-primary-foreground" : "")}
+                  aria-label="Open Dialer"
+                >
+                  <Phone className="h-5 w-5" />
+                </Button>
+                {/* Email Templates */}
+                <Button
+                  size="icon"
+                  variant={bottomBarTab === "email" ? "default" : "ghost"}
+                  onClick={() => setBottomBarTab(bottomBarTab === "email" ? null : "email")}
+                  className={cn("rounded-full", bottomBarTab === "email" ? "bg-primary text-primary-foreground" : "")}
+                  aria-label="Email Templates"
+                >
+                  <Mail className="h-5 w-5" />
+                </Button>
+                {/* Recent Calls */}
+                <Button
+                  size="icon"
+                  variant={bottomBarTab === "calls" ? "default" : "ghost"}
+                  onClick={() => setBottomBarTab(bottomBarTab === "calls" ? null : "calls")}
+                  className={cn("rounded-full", bottomBarTab === "calls" ? "bg-primary text-primary-foreground" : "")}
+                  aria-label="Recent Calls"
+                >
+                  <Clock className="h-5 w-5" />
+                </Button>
               </div>
-              <ChevronUp className="h-5 w-5" />
+              {/* If drawer open, show explicit close btn */}
+              {!!bottomBarTab && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="ml-2"
+                  aria-label="Close Drawer"
+                  onClick={() => setBottomBarTab(null)}
+                >
+                  <CloseIcon className="h-4 w-4" />
+                </Button>
+              )}
             </div>
           </div>
         </DrawerTrigger>
         <DrawerContent className="max-h-[85vh]">
           <DrawerHeader>
             <DrawerTitle className="flex items-center gap-2">
-              <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-              </svg>
-              Unified Dialer
+              {/* Icon & title per tab */}
+              {bottomBarTab === "dialer" && (
+                <>
+                  <Phone className="h-5 w-5" />
+                  Unified Dialer
+                </>
+              )}
+              {bottomBarTab === "email" && (
+                <>
+                  <Mail className="h-5 w-5" />
+                  Email Templates
+                </>
+              )}
+              {bottomBarTab === "calls" && (
+                <>
+                  <Clock className="h-5 w-5" />
+                  Recent Calls
+                </>
+              )}
             </DrawerTitle>
             <DrawerDescription>
-              Make calls and view recent call history
+              {bottomBarTab === "dialer" && "Make calls and view recent call history"}
+              {bottomBarTab === "email" && "Create, preview and edit your email templates"}
+              {bottomBarTab === "calls" && "View your most recent calls"}
             </DrawerDescription>
           </DrawerHeader>
-          
-          <div className="px-4 space-y-6 overflow-y-auto">
-            {/* Dialer */}
-            <UnifiedDialer 
-              disabled={false} 
-              onCallInitiated={handleCallUpdate}
-              initialData={dialerInitialData}
-            />
-            
-            {/* Recent Calls */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Clock className="h-4 w-4" />
-                  Recent Calls
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <CallHistory calls={callRecords.slice(0, 10)} />
-              </CardContent>
-            </Card>
-          </div>
+          {renderDrawerPanel()}
         </DrawerContent>
       </Drawer>
+      {/* --- END BOTTOM BAR --- */}
     </div>
   );
 };
