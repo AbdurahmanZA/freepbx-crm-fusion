@@ -65,24 +65,36 @@ const UnifiedDialer = ({ onCallInitiated, disabled, initialData }: UnifiedDialer
     return saved ? JSON.parse(saved) : [];
   };
 
+  // Utility to get the current leads from localStorage
+  const getCurrentLeads = () => {
+    try {
+      return JSON.parse(localStorage.getItem('leads') || '[]');
+    } catch {
+      return [];
+    }
+  };
+
   // Utility to get a matched lead for the current dialer context
   const getCurrentLead = (): any => {
-    // Try direct initialData, fallback to localStorage leads match
+    // Try direct initialData first
     if (initialData?.leadData?.id) return initialData.leadData;
-    const leads = JSON.parse(localStorage.getItem('leads') || '[]');
-    // Try to match by phone or email
+    
+    // Get fresh leads from localStorage and match by phone or email
+    const leads = getCurrentLeads();
     return leads.find((lead: any) =>
       (lead.phone && phoneNumber && lead.phone.replace(/[\s\-\(\)]/g, '') === phoneNumber.replace(/[\s\-\(\)]/g, '')) ||
       (lead.email && contactEmail && lead.email.toLowerCase() === contactEmail.toLowerCase())
     );
   };
 
-  // This new useEffect populates the dialer when props are received
+  // This useEffect populates the dialer when props are received
   useEffect(() => {
     if (initialData) {
       const phone = initialData.phoneNumber || "";
       const name = initialData.contactName || (initialData.leadData?.name) || "";
       const email = initialData.contactEmail || (initialData.leadData?.email) || "";
+      
+      console.log('📧 [UnifiedDialer] Setting initial data:', { phone, name, email });
       
       setPhoneNumber(phone);
       setContactName(name);
@@ -278,7 +290,7 @@ const UnifiedDialer = ({ onCallInitiated, disabled, initialData }: UnifiedDialer
 
   // Function to lookup and populate contact data from leads
   const populateContactFromLeads = (phone: string, name?: string) => {
-    const leads = JSON.parse(localStorage.getItem('leads') || '[]');
+    const leads = getCurrentLeads();
     const normalizedPhone = phone.replace(/[\s\-\(\)]/g, '');
     
     const matchedLead = leads.find((lead: any) => {
@@ -287,6 +299,7 @@ const UnifiedDialer = ({ onCallInitiated, disabled, initialData }: UnifiedDialer
     });
 
     if (matchedLead) {
+      console.log('📧 [UnifiedDialer] Found matching lead:', matchedLead);
       setContactName(matchedLead.name || name || "");
       setContactEmail(matchedLead.email || "");
     } else {
@@ -300,17 +313,22 @@ const UnifiedDialer = ({ onCallInitiated, disabled, initialData }: UnifiedDialer
     const templates = getEmailTemplates();
     const template = templates.find((t: any) => t.id === selectedTemplate);
     
-    if (!template || !contactEmail) {
+    // Use the current contactEmail from the input field
+    const currentEmail = contactEmail.trim();
+    
+    if (!template || !currentEmail) {
       toast({
         title: "Missing Information",
-        description: "Please select a template and enter an email address.",
+        description: !template ? "Please select a template." : "Please enter an email address.",
         variant: "destructive"
       });
       return;
     }
 
-    // Get lead data for template variables
-    const leads = JSON.parse(localStorage.getItem('leads') || '[]');
+    console.log('📧 [UnifiedDialer] Preparing email preview with email:', currentEmail);
+
+    // Get lead data for template variables - use fresh data from localStorage
+    const leads = getCurrentLeads();
     const matchedLead = findMatchedLead({ leads, phoneNumber });
     
     const templateVars = buildTemplateVars({
@@ -318,8 +336,8 @@ const UnifiedDialer = ({ onCallInitiated, disabled, initialData }: UnifiedDialer
       userName: user?.name,
       fallbackName: contactName,
       fallbackPhone: phoneNumber,
-      fallbackEmail: contactEmail,
-      contactEmail,
+      fallbackEmail: currentEmail,
+      contactEmail: currentEmail,
       phoneNumber,
     });
 
@@ -334,7 +352,7 @@ const UnifiedDialer = ({ onCallInitiated, disabled, initialData }: UnifiedDialer
     });
 
     setEmailPreviewData({
-      to: contactEmail,
+      to: currentEmail, // Use the current email from input
       templateName: template.name,
       subject,
       body
@@ -346,14 +364,21 @@ const UnifiedDialer = ({ onCallInitiated, disabled, initialData }: UnifiedDialer
   const sendEmailTemplate = () => {
     if (!emailPreviewData) return;
 
-    // Find the best matching lead for logging
-    const matchedLead = getCurrentLead();
+    console.log('📧 [UnifiedDialer] Sending email to:', emailPreviewData.to);
+
+    // Find the best matching lead for logging - use fresh data
+    const leads = getCurrentLeads();
+    const matchedLead = leads.find((lead: any) =>
+      (lead.phone && phoneNumber && lead.phone.replace(/[\s\-\(\)]/g, '') === phoneNumber.replace(/[\s\-\(\)]/g, '')) ||
+      (lead.email && emailPreviewData.to && lead.email.toLowerCase() === emailPreviewData.to.toLowerCase())
+    );
+    
     const matchedLeadId = matchedLead?.id ? String(matchedLead.id) : undefined;
 
-    // Save to email logs with consistent leadId for timeline filtering
+    // Save to email logs with the actual email being sent to
     emailLogService.logEmail({
-      to: emailPreviewData.to,
-      from: user?.email || "Unknown", // ADDED field for sender
+      to: emailPreviewData.to, // This should be the email from the input field
+      from: user?.email || "Unknown",
       subject: emailPreviewData.subject,
       body: emailPreviewData.body,
       templateName: emailPreviewData.templateName,
@@ -363,7 +388,8 @@ const UnifiedDialer = ({ onCallInitiated, disabled, initialData }: UnifiedDialer
       phone: phoneNumber,
       extra: {
         dialerPanel: true,
-        // you may add more as needed
+        sentFromDialer: true,
+        actualRecipient: emailPreviewData.to
       }
     });
 
@@ -373,6 +399,8 @@ const UnifiedDialer = ({ onCallInitiated, disabled, initialData }: UnifiedDialer
       title: "Email Sent",
       description: `Email sent to ${emailPreviewData.to}`,
     });
+
+    console.log('📧 [UnifiedDialer] Email logged and sent to:', emailPreviewData.to);
 
     setShowEmailPreview(false);
     setIsEmailExpanded(false);
@@ -410,7 +438,7 @@ const UnifiedDialer = ({ onCallInitiated, disabled, initialData }: UnifiedDialer
             <p className="text-destructive text-xs">No extension assigned</p>
           )}
 
-          {/* Active call status - Compact */}
+          {/* Active call status - keep existing code */}
           {activeCall && (
             <div className="p-2 bg-green-50 border border-green-200 rounded">
               <div className="flex items-center justify-between">
@@ -431,11 +459,17 @@ const UnifiedDialer = ({ onCallInitiated, disabled, initialData }: UnifiedDialer
             </div>
           )}
 
-          {/* Dialer Panel - Compact */}
+          {/* Dialer Panel - Enhanced with email sync */}
           <div className="grid grid-cols-2 gap-2">
             <Input
               value={phoneNumber}
-              onChange={e => setPhoneNumber(e.target.value)}
+              onChange={e => {
+                setPhoneNumber(e.target.value);
+                // Auto-populate from leads when phone changes
+                if (e.target.value.length > 7) {
+                  populateContactFromLeads(e.target.value);
+                }
+              }}
               placeholder="Phone number"
               className="text-sm h-8"
             />

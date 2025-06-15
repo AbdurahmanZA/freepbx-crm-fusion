@@ -55,73 +55,92 @@ const LeadManagement = ({ userRole }: LeadManagementProps) => {
   const [selectedLeads, setSelectedLeads] = useState<number[]>([]);
   const [editingLead, setEditingLead] = useState<number | null>(null);
   const [editForm, setEditForm] = useState<Partial<Lead>>({});
-  const [leads, setLeads] = useState<Lead[]>([
-    {
-      id: 1,
-      name: "John Smith",
-      company: "Acme Corp",
-      phone: "+1-555-0123",
-      email: "john@acme.com",
-      status: "new",
-      priority: "high",
-      source: "Website",
-      assignedAgent: "Sarah Wilson",
-      lastContact: "Never",
-      notes: "Interested in enterprise solution"
-    },
-    {
-      id: 2,
-      name: "Sarah Johnson",
-      company: "Tech Solutions",
-      phone: "+1-555-0456",
-      email: "sarah@techsol.com",
-      status: "contacted",
-      priority: "medium",
-      source: "Referral",
-      assignedAgent: "Mike Davis",
-      lastContact: "2024-06-09",
-      notes: "Requested callback for pricing"
-    },
-    {
-      id: 3,
-      name: "Mike Davis",
-      company: "Global Systems",
-      phone: "+1-555-0789",
-      email: "mike@global.com",
-      status: "qualified",
-      priority: "high",
-      source: "Cold Call",
-      assignedAgent: "Sarah Wilson",
-      lastContact: "2024-06-08",
-      notes: "Ready to move forward, send proposal"
-    },
-    {
-      id: 4,
-      name: "Emily Brown",
-      company: "Innovation Labs",
-      phone: "+1-555-0321",
-      email: "emily@innovlabs.com",
-      status: "new",
-      priority: "medium",
-      source: "LinkedIn",
-      assignedAgent: "John Doe",
-      lastContact: "Never",
-      notes: "Inquiry about custom development"
-    },
-    {
-      id: 5,
-      name: "Robert Wilson",
-      company: "Digital Agency",
-      phone: "+1-555-0654",
-      email: "robert@digitalagency.com",
-      status: "follow-up",
-      priority: "low",
-      source: "Trade Show",
-      assignedAgent: "Sarah Wilson",
-      lastContact: "2024-06-10",
-      notes: "Needs budget approval from management"
+  const [leads, setLeads] = useState<Lead[]>(() => {
+    // Load leads from localStorage if available
+    const savedLeads = localStorage.getItem('leads');
+    if (savedLeads) {
+      try {
+        return JSON.parse(savedLeads);
+      } catch {
+        // If parsing fails, fall back to default leads
+      }
     }
-  ]);
+    
+    // Default leads if none in localStorage
+    return [
+      {
+        id: 1,
+        name: "John Smith",
+        company: "Acme Corp",
+        phone: "+1-555-0123",
+        email: "john@acme.com",
+        status: "new",
+        priority: "high",
+        source: "Website",
+        assignedAgent: "Sarah Wilson",
+        lastContact: "Never",
+        notes: "Interested in enterprise solution"
+      },
+      {
+        id: 2,
+        name: "Sarah Johnson",
+        company: "Tech Solutions",
+        phone: "+1-555-0456",
+        email: "sarah@techsol.com",
+        status: "contacted",
+        priority: "medium",
+        source: "Referral",
+        assignedAgent: "Mike Davis",
+        lastContact: "2024-06-09",
+        notes: "Requested callback for pricing"
+      },
+      {
+        id: 3,
+        name: "Mike Davis",
+        company: "Global Systems",
+        phone: "+1-555-0789",
+        email: "mike@global.com",
+        status: "qualified",
+        priority: "high",
+        source: "Cold Call",
+        assignedAgent: "Sarah Wilson",
+        lastContact: "2024-06-08",
+        notes: "Ready to move forward, send proposal"
+      },
+      {
+        id: 4,
+        name: "Emily Brown",
+        company: "Innovation Labs",
+        phone: "+1-555-0321",
+        email: "emily@innovlabs.com",
+        status: "new",
+        priority: "medium",
+        source: "LinkedIn",
+        assignedAgent: "John Doe",
+        lastContact: "Never",
+        notes: "Inquiry about custom development"
+      },
+      {
+        id: 5,
+        name: "Robert Wilson",
+        company: "Digital Agency",
+        phone: "+1-555-0654",
+        email: "robert@digitalagency.com",
+        status: "follow-up",
+        priority: "low",
+        source: "Trade Show",
+        assignedAgent: "Sarah Wilson",
+        lastContact: "2024-06-10",
+        notes: "Needs budget approval from management"
+      }
+    ];
+  });
+
+  // Save leads to localStorage whenever leads state changes
+  useEffect(() => {
+    console.log('📧 [LeadManagement] Saving leads to localStorage:', leads.length);
+    localStorage.setItem('leads', JSON.stringify(leads));
+  }, [leads]);
 
   // Listen for new leads created from manual calls
   useEffect(() => {
@@ -268,6 +287,8 @@ const LeadManagement = ({ userRole }: LeadManagementProps) => {
   const handleSaveEdit = () => {
     if (!editingLead || !editForm) return;
 
+    console.log('📧 [LeadManagement] Saving lead edit:', editForm);
+
     setLeads(prevLeads =>
       prevLeads.map(lead =>
         lead.id === editingLead ? { ...lead, ...editForm } : lead
@@ -409,6 +430,7 @@ const LeadManagement = ({ userRole }: LeadManagementProps) => {
 
   // OPEN DIALOG - called when user clicks "Email Form"
   const handleEmailFormClick = (lead: Lead) => {
+    console.log('📧 [LeadManagement] Opening email dialog for lead:', lead);
     setDialogLeadId(lead.id);
     setSelectedTemplateId(null);
     setEmailDialogOpen(true);
@@ -418,8 +440,9 @@ const LeadManagement = ({ userRole }: LeadManagementProps) => {
   const handleTemplateSend = async () => {
     if (!dialogLeadId || !selectedTemplateId) return;
 
-    const dialogLead = leads.find(l => l.id === dialogLeadId);
-    if (!dialogLead) {
+    // Get the CURRENT lead data (which includes any edits made)
+    const currentLead = leads.find(l => l.id === dialogLeadId);
+    if (!currentLead) {
       toast({
         title: "Lead Not Found",
         description: "The selected lead could not be found. It may have been deleted.",
@@ -429,6 +452,8 @@ const LeadManagement = ({ userRole }: LeadManagementProps) => {
       setDialogLeadId(null);
       return;
     }
+
+    console.log('📧 [LeadManagement] Sending email to current lead data:', currentLead);
 
     setSendingEmail(true);
 
@@ -453,31 +478,51 @@ const LeadManagement = ({ userRole }: LeadManagementProps) => {
 
     try {
       const companyName = localStorage.getItem('smtp_from_name') || 'Your Company';
-      const formLink = `${window.location.origin}/customer-form?lead=${dialogLead.id}`;
+      const formLink = `${window.location.origin}/customer-form?lead=${currentLead.id}`;
 
-      // Always use dialogLead's ACTUAL properties
-      const realLeadName = dialogLead.name;
-      const realLeadEmail = dialogLead.email;
-      const realLeadPhone = dialogLead.phone;
+      // Use the CURRENT lead data (not the original dialogLead)
+      const actualLeadName = currentLead.name;
+      const actualLeadEmail = currentLead.email;
+      const actualLeadPhone = currentLead.phone;
+
+      console.log('📧 [LeadManagement] Sending to actual email:', actualLeadEmail);
 
       // These substitutions ensure we use the latest, user-edited info
       const subject = template.subject
-        .replace('{{customerName}}', realLeadName)
+        .replace('{{customerName}}', actualLeadName)
         .replace('{{companyName}}', companyName);
 
       const body = (template.body || "")
-        .replace('{{customerName}}', realLeadName)
+        .replace('{{customerName}}', actualLeadName)
         .replace('{{formLink}}', formLink)
         .replace('{{companyName}}', companyName)
-        .replace('{{phone}}', realLeadPhone)
-        .replace('{{email}}', realLeadEmail);
+        .replace('{{phone}}', actualLeadPhone)
+        .replace('{{email}}', actualLeadEmail);
 
-      // Simulate send (if you call an actual API here, be sure to pass realLeadEmail)
+      // Log the email with the ACTUAL recipient email
+      emailLogService.logEmail({
+        to: actualLeadEmail, // Use the current lead's email
+        from: user?.email || "Unknown",
+        subject: subject,
+        body: body,
+        templateName: template.name,
+        agent: user?.name || "Unknown",
+        leadId: String(currentLead.id),
+        leadName: actualLeadName,
+        phone: actualLeadPhone,
+        extra: {
+          leadManagement: true,
+          templateId: selectedTemplateId,
+          actualRecipient: actualLeadEmail
+        }
+      });
+
+      // Simulate send (if you call an actual API here, be sure to pass actualLeadEmail)
       await new Promise(resolve => setTimeout(resolve, 1000));
 
       setLeads(prevLeads =>
         prevLeads.map(l =>
-          l.id === dialogLead.id
+          l.id === currentLead.id
             ? { ...l, status: 'contacted', lastContact: new Date().toISOString().split('T')[0] }
             : l
         )
@@ -485,20 +530,21 @@ const LeadManagement = ({ userRole }: LeadManagementProps) => {
 
       toast({
         title: "Email Sent",
-        description: `Email sent to ${realLeadName} (${realLeadEmail})`,
+        description: `Email sent to ${actualLeadName} (${actualLeadEmail})`,
       });
 
       // Send Discord notification (also with correct email/name)
       if ((window as any).sendDiscordNotification) {
-        (window as any).sendDiscordnotification(
-          realLeadName,
+        (window as any).sendDiscordNotification(
+          actualLeadName,
           'emailed',
-          `Sent ${template.name} to ${realLeadEmail}`
+          `Sent ${template.name} to ${actualLeadEmail}`
         );
       }
 
       setEmailDialogOpen(false);
     } catch (error) {
+      console.error('📧 [LeadManagement] Email send error:', error);
       toast({
         title: "Email Failed",
         description: "Could not send email. Please check your SMTP configuration.",
