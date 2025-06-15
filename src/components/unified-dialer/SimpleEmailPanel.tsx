@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -118,21 +119,43 @@ const SimpleEmailPanel: React.FC<SimpleEmailPanelProps> = ({
     setIsSending(true);
     
     try {
+      console.log('📧 [SimpleEmailPanel] Starting email send process');
+      console.log('📧 [SimpleEmailPanel] Preview email data:', previewEmail);
+      console.log('📧 [SimpleEmailPanel] User data:', user);
+
+      const emailPayload = {
+        to: previewEmail.to,
+        subject: previewEmail.subject,
+        body: previewEmail.body,
+        fromEmail: user?.email,
+        fromName: user?.name
+      };
+
+      console.log('📧 [SimpleEmailPanel] Email payload:', emailPayload);
+
       const response = await fetch('/api/send-email', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          to: previewEmail.to,
-          subject: previewEmail.subject,
-          body: previewEmail.body,
-          fromEmail: user?.email,
-          fromName: user?.name
-        })
+        body: JSON.stringify(emailPayload)
       });
 
-      const result = await response.json();
+      console.log('📧 [SimpleEmailPanel] Response status:', response.status);
+      console.log('📧 [SimpleEmailPanel] Response headers:', response.headers);
+
+      const responseText = await response.text();
+      console.log('📧 [SimpleEmailPanel] Raw response text:', responseText);
+
+      let result;
+      try {
+        result = JSON.parse(responseText);
+        console.log('📧 [SimpleEmailPanel] Parsed result:', result);
+      } catch (parseError) {
+        console.error('📧 [SimpleEmailPanel] JSON parse error:', parseError);
+        console.error('📧 [SimpleEmailPanel] Response was not valid JSON:', responseText);
+        throw new Error(`Invalid JSON response: ${responseText}`);
+      }
       
       if (result.success) {
         // Log the email as sent
@@ -166,6 +189,7 @@ const SimpleEmailPanel: React.FC<SimpleEmailPanelProps> = ({
         throw new Error(result.message || 'Failed to send email');
       }
     } catch (error) {
+      console.error('📧 [SimpleEmailPanel] Email send error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       
       logEmailSent(previewEmail, 'failed', errorMessage);
