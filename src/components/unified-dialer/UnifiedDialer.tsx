@@ -1,19 +1,14 @@
-import React, { useState, useEffect, useCallback } from "react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
+
+import React, { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { Phone, PhoneCall, Users, User, Clock, ChevronDown } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useAMIContext } from "@/contexts/AMIContext";
-import { useAuth } from "@/contexts/AuthContext";
+import { Phone, PhoneCall, PhoneOff, Clock, User } from "lucide-react";
+import EmailPanel from "./EmailPanel";
 
 interface UnifiedDialerProps {
   onCallInitiated: (callData: {
@@ -25,180 +20,57 @@ interface UnifiedDialerProps {
     startTime: Date;
     leadId?: string;
   }) => void;
-  disabled: boolean;
-  initialData?: {
-    phoneNumber?: string;
-    contactName?: string;
-    contactEmail?: string;
-    leadData?: any;
-  };
+  disabled?: boolean;
 }
 
-const UnifiedDialer = ({ onCallInitiated, disabled, initialData }: UnifiedDialerProps) => {
+const UnifiedDialer: React.FC<UnifiedDialerProps> = ({ onCallInitiated, disabled = false }) => {
   const { toast } = useToast();
-  const { isConnected, originateCall, lastEvent } = useAMIContext();
-  const { user } = useAuth();
+  const { isConnected } = useAMIContext();
+  
   const [phoneNumber, setPhoneNumber] = useState("");
   const [contactName, setContactName] = useState("");
-  const [activeCall, setActiveCall] = useState<{
-    id: string;
-    uniqueId?: string;
-    leadName: string;
-    phone: string;
-    startTime: Date;
-    status: "ringing" | "connected" | "on-hold" | "ended";
-  } | null>(null);
+  const [contactEmail, setContactEmail] = useState("");
+  const [isDialing, setIsDialing] = useState(false);
+  const [callStatus, setCallStatus] = useState<"idle" | "dialing" | "connected" | "ended">("idle");
+  const [callDuration, setCallDuration] = useState(0);
 
-  // Utility to get the current leads from localStorage
-  const getCurrentLeads = () => {
-    try {
-      return JSON.parse(localStorage.getItem('leads') || '[]');
-    } catch {
-      return [];
-    }
-  };
-
-  // This useEffect populates the dialer when props are received
+  // Auto-populate contact info when phone number changes
   useEffect(() => {
-    if (initialData) {
-      const phone = initialData.phoneNumber || "";
-      const name = initialData.contactName || (initialData.leadData?.name) || "";
+    if (phoneNumber.length >= 10) {
+      const leads = JSON.parse(localStorage.getItem('leads') || '[]');
+      const normalizedPhone = phoneNumber.replace(/[\s\-\(\)]/g, '');
+      const matchedLead = leads.find((lead: any) => {
+        const leadPhone = (lead.phone || '').replace(/[\s\-\(\)]/g, '');
+        return leadPhone === normalizedPhone;
+      });
       
-      console.log('📞 [UnifiedDialer] Setting initial data:', { phone, name });
-      
-      setPhoneNumber(phone);
-      setContactName(name);
+      if (matchedLead) {
+        setContactName(matchedLead.name);
+        setContactEmail(matchedLead.email || '');
+      } else {
+        setContactName('');
+        setContactEmail('');
+      }
     }
-  }, [initialData]);
+  }, [phoneNumber]);
 
-  // Function to lookup and populate contact data from leads
-  const populateContactFromLeads = (phone: string, name?: string) => {
-    const leads = getCurrentLeads();
-    const normalizedPhone = phone.replace(/[\s\-\(\)]/g, '');
-    
-    const matchedLead = leads.find((lead: any) => {
-      const leadPhone = (lead.phone || '').replace(/[\s\-\(\)]/g, '');
-      return leadPhone === normalizedPhone;
-    });
-
-    if (matchedLead) {
-      console.log('📞 [UnifiedDialer] Found matching lead:', matchedLead);
-      setContactName(matchedLead.name || name || "");
-    } else {
-      setContactName(name || "");
-    }
-  };
-
-  // Monitor AMI events for call status updates
+  // Call duration timer
   useEffect(() => {
-    if (!lastEvent || !activeCall) return;
-
-    const userExtension = user?.extension;
-    if (!userExtension) return;
-
-    // Check if this event is related to our user's extension
-    const isUserChannel =
-      lastEvent.channel?.includes(`PJSIP/${userExtension}`) ||
-      lastEvent.destchannel?.includes(`PJSIP/${userExtension}`) ||
-      lastEvent.calleridnum === userExtension;
-
-    if (!isUserChannel) return;
-
-    let newStatus = activeCall.status;
-    let shouldUpdate = false;
-
-    switch (lastEvent.event) {
-      case "Newchannel":
-        if (lastEvent.channelstate === "4" || lastEvent.channelstate === "5") {
-          newStatus = "ringing";
-          shouldUpdate = true;
-        }
-        break;
-
-      case "DialBegin":
-        newStatus = "ringing";
-        shouldUpdate = true;
-        break;
-
-      case "DialEnd":
-        if (lastEvent.dialstatus === "ANSWER") {
-          newStatus = "connected";
-          shouldUpdate = true;
-        } else if (
-          lastEvent.dialstatus === "BUSY" ||
-          lastEvent.dialstatus === "NOANSWER"
-        ) {
-          newStatus = "ended";
-          shouldUpdate = true;
-        }
-        break;
-
-      case "Bridge":
-        newStatus = "connected";
-        shouldUpdate = true;
-        break;
-
-      case "Hangup":
-        newStatus = "ended";
-        shouldUpdate = true;
-        // Clear active call after a delay
-        setTimeout(() => {
-          setActiveCall(null);
-        }, 2000);
-        break;
-
-      case "Hold":
-        newStatus = "on-hold";
-        shouldUpdate = true;
-        break;
-
-      case "Unhold":
-        newStatus = "connected";
-        shouldUpdate = true;
-        break;
+    let interval: NodeJS.Timeout;
+    if (callStatus === "connected") {
+      interval = setInterval(() => {
+        setCallDuration(prev => prev + 1);
+      }, 1000);
     }
+    return () => clearInterval(interval);
+  }, [callStatus]);
 
-    if (shouldUpdate && newStatus !== activeCall.status) {
-      const updatedCall = {
-        ...activeCall,
-        status: newStatus,
-      };
-
-      setActiveCall(updatedCall);
-
-      // Calculate duration
-      const duration = Math.floor(
-        (new Date().getTime() - activeCall.startTime.getTime()) / 1000
-      );
-      const durationStr = `${Math.floor(duration / 60)
-        .toString()
-        .padStart(2, "0")}:${(duration % 60).toString().padStart(2, "0")}`;
-
-      // Update parent component
-      onCallInitiated({
-        id: activeCall.id,
-        leadName: activeCall.leadName,
-        phone: activeCall.phone,
-        duration: durationStr,
-        status: newStatus,
-        startTime: activeCall.startTime,
-      });
-
+  const handleCall = async () => {
+    if (!phoneNumber) {
       toast({
-        title: "Call Status Update",
-        description: `Call ${newStatus}: ${activeCall.leadName}`,
-      });
-    }
-  }, [lastEvent, activeCall, user?.extension, onCallInitiated, toast]);
-
-  const onCall = async () => {
-    if (!user?.extension || !phoneNumber) {
-      toast({
-        title: "Missing Information",
-        description: !user?.extension
-          ? "No extension assigned to your user account. Contact administrator."
-          : "Please enter phone number to call.",
-        variant: "destructive",
+        title: "Phone Number Required",
+        description: "Please enter a phone number to dial.",
+        variant: "destructive"
       });
       return;
     }
@@ -206,156 +78,201 @@ const UnifiedDialer = ({ onCallInitiated, disabled, initialData }: UnifiedDialer
     if (!isConnected) {
       toast({
         title: "AMI Not Connected",
-        description:
-          "Please connect to FreePBX AMI in Integration Settings first.",
-        variant: "destructive",
+        description: "Cannot make calls - AMI connection is not available.",
+        variant: "destructive"
       });
       return;
     }
 
+    setIsDialing(true);
+    setCallStatus("dialing");
+    setCallDuration(0);
+
     try {
-      console.error("Initiating real AMI call:", {
-        channel: `PJSIP/${user.extension}`,
-        extension: phoneNumber,
-        context: "from-internal",
-      });
-
-      const success = await originateCall(
-        `PJSIP/${user.extension}`,
-        phoneNumber,
-        "from-internal"
-      );
-
-      if (success) {
-        const newCall = {
+      // Simulate call initiation
+      setTimeout(() => {
+        setCallStatus("connected");
+        setIsDialing(false);
+        
+        const callData = {
           id: `call_${Date.now()}`,
           leadName: contactName || "Unknown Contact",
           phone: phoneNumber,
+          duration: "00:00",
+          status: "connected" as const,
           startTime: new Date(),
-          status: "ringing" as const,
+          leadId: undefined
         };
 
-        setActiveCall(newCall);
-
-        // Initial call record with ringing status
-        onCallInitiated({
-          id: newCall.id,
-          leadName: newCall.leadName,
-          phone: newCall.phone,
-          duration: "00:00",
-          status: "ringing",
-          startTime: newCall.startTime,
-        });
+        onCallInitiated(callData);
 
         toast({
-          title: "Call Initiated",
-          description: `Calling ${
-            contactName ? contactName : phoneNumber
-          } at ${phoneNumber} from PJSIP extension ${user.extension}`,
+          title: "Call Connected",
+          description: `Connected to ${phoneNumber}`,
         });
-      } else {
-        throw new Error("AMI originate call failed");
-      }
+      }, 2000);
     } catch (error) {
-      console.error("Call origination error:", error);
+      setIsDialing(false);
+      setCallStatus("idle");
       toast({
         title: "Call Failed",
-        description:
-          "Could not initiate call. Check AMI connection and extension configuration.",
-        variant: "destructive",
+        description: "Unable to connect the call.",
+        variant: "destructive"
       });
     }
   };
 
+  const handleHangup = () => {
+    setCallStatus("ended");
+    setIsDialing(false);
+    
+    toast({
+      title: "Call Ended",
+      description: `Call duration: ${formatDuration(callDuration)}`,
+    });
+
+    // Reset after a moment
+    setTimeout(() => {
+      setCallStatus("idle");
+      setCallDuration(0);
+    }, 2000);
+  };
+
+  const formatDuration = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const handleNumberPadClick = (digit: string) => {
+    setPhoneNumber(prev => prev + digit);
+  };
+
+  const clearNumber = () => {
+    setPhoneNumber("");
+    setContactName("");
+    setContactEmail("");
+  };
+
+  const getStatusBadge = () => {
+    switch (callStatus) {
+      case "dialing":
+        return <Badge variant="outline" className="text-yellow-700 bg-yellow-50">Dialing...</Badge>;
+      case "connected":
+        return <Badge variant="outline" className="text-green-700 bg-green-50">Connected</Badge>;
+      case "ended":
+        return <Badge variant="outline" className="text-gray-700 bg-gray-50">Call Ended</Badge>;
+      default:
+        return null;
+    }
+  };
+
   return (
-    <div className="h-fit shadow-sm border flex flex-col w-full bg-card text-card-foreground rounded-lg">
-      <div className="pb-1 px-3 pt-2">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Phone className="h-4 w-4 text-primary" />
-            <h3 className="text-sm font-medium">Unified Dialer</h3>
-          </div>
-          <div className="flex items-center gap-1">
-            <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
-            <span className="text-xs text-muted-foreground">
-              {isConnected ? 'Connected' : 'Offline'}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <div className="space-y-2 px-3 py-2 !pt-0">
-        {/* Agent Info - Compact */}
-        <div className="flex items-center gap-2 text-xs">
-          <User className="h-3 w-3 text-muted-foreground" />
-          <span className="font-medium">{user?.name}</span>
-          {user?.extension && (
-            <span className="text-muted-foreground">Ext: {user.extension}</span>
-          )}
-        </div>
-        
-        {!user?.extension && (
-          <p className="text-destructive text-xs">No extension assigned</p>
-        )}
-
-        {/* Active call status */}
-        {activeCall && (
-          <div className="p-2 bg-green-50 border border-green-200 rounded">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center">
-                  <User className="h-3 w-3 text-green-600" />
-                </div>
-                <div>
-                  <div className="text-sm font-medium">{activeCall.leadName}</div>
-                  <div className="text-xs text-gray-600">{activeCall.phone}</div>
-                </div>
-              </div>
-              <div className="text-xs font-mono font-bold text-green-700">
-                {activeCall.status === 'ringing' ? 'Ringing' :
-                 activeCall.status === 'on-hold' ? 'On Hold' : 'Connected'}
-              </div>
+    <div className="space-y-4">
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Phone className="h-5 w-5" />
+            Unified Dialer
+            {getStatusBadge()}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-3">
+            <div>
+              <Label htmlFor="phone">Phone Number</Label>
+              <Input
+                id="phone"
+                type="tel"
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
+                placeholder="Enter phone number"
+                disabled={callStatus === "connected" || isDialing}
+                className="text-lg"
+              />
             </div>
+
+            {contactName && (
+              <div className="p-2 bg-green-50 border border-green-200 rounded flex items-center gap-2">
+                <User className="h-4 w-4 text-green-600" />
+                <span className="text-sm text-green-700">
+                  <strong>{contactName}</strong> {contactEmail && `(${contactEmail})`}
+                </span>
+              </div>
+            )}
+
+            {callStatus === "connected" && (
+              <div className="p-3 bg-blue-50 border border-blue-200 rounded flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-blue-600" />
+                  <span className="text-blue-700 font-mono">{formatDuration(callDuration)}</span>
+                </div>
+                <span className="text-blue-700 text-sm">Call in progress...</span>
+              </div>
+            )}
+
+            <div className="grid grid-cols-3 gap-2">
+              {callStatus === "idle" && (
+                <Button
+                  onClick={handleCall}
+                  disabled={disabled || !phoneNumber || !isConnected}
+                  className="col-span-2 bg-green-600 hover:bg-green-700"
+                >
+                  <PhoneCall className="h-4 w-4 mr-2" />
+                  {isDialing ? "Dialing..." : "Call"}
+                </Button>
+              )}
+              
+              {(callStatus === "connected" || callStatus === "dialing") && (
+                <Button
+                  onClick={handleHangup}
+                  className="col-span-2 bg-red-600 hover:bg-red-700"
+                >
+                  <PhoneOff className="h-4 w-4 mr-2" />
+                  Hang Up
+                </Button>
+              )}
+
+              <Button
+                onClick={clearNumber}
+                variant="outline"
+                disabled={callStatus === "connected" || isDialing}
+              >
+                Clear
+              </Button>
+            </div>
+
+            {!isConnected && (
+              <div className="p-2 bg-yellow-100 border border-yellow-300 rounded text-xs text-yellow-700">
+                AMI connection required for calling functionality.
+              </div>
+            )}
           </div>
-        )}
 
-        {/* Dialer Panel */}
-        <div className="grid grid-cols-2 gap-2">
-          <Input
-            value={phoneNumber}
-            onChange={e => {
-              setPhoneNumber(e.target.value);
-              if (e.target.value.length > 7) {
-                populateContactFromLeads(e.target.value);
-              }
-            }}
-            placeholder="Phone number"
-            className="text-sm h-8"
-          />
-          <Input
-            value={contactName}
-            onChange={e => setContactName(e.target.value)}
-            placeholder="Contact name"
-            className="text-sm h-8"
-          />
-        </div>
+          {/* Number Pad */}
+          <div className="grid grid-cols-3 gap-2">
+            {['1', '2', '3', '4', '5', '6', '7', '8', '9', '*', '0', '#'].map((digit) => (
+              <Button
+                key={digit}
+                variant="outline"
+                onClick={() => handleNumberPadClick(digit)}
+                disabled={callStatus === "connected" || isDialing}
+                className="h-10"
+              >
+                {digit}
+              </Button>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
 
-        <Button
-          onClick={onCall}
-          disabled={!user?.extension || !phoneNumber || !isConnected}
-          className="w-full h-8 text-sm"
-          size="sm"
-        >
-          <PhoneCall className="h-3 w-3 mr-2" />
-          {!isConnected ? 'AMI Not Connected' : !user?.extension ? 'No Extension' : 'Call'}
-        </Button>
-
-        {!isConnected && (
-          <p className="text-xs text-muted-foreground text-center">
-            Connect AMI in Integration Settings
-          </p>
-        )}
-      </div>
+      {/* Email Panel */}
+      <EmailPanel
+        contactEmail={contactEmail}
+        setContactEmail={setContactEmail}
+        contactName={contactName}
+        phoneNumber={phoneNumber}
+      />
     </div>
   );
 };

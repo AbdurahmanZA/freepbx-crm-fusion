@@ -98,12 +98,10 @@ const LeadManagement = () => {
   const [sortDirection, setSortDirection] = useState("desc");
   const [showEmailDialog, setShowEmailDialog] = useState(false);
   const [selectedEmailTemplate, setSelectedEmailTemplate] = useState<string | null>(null);
-  const [emailTemplates, setEmailTemplates] = useState<SimpleEmailTemplate[]>([]);
   const [isEmailLoading, setIsEmailLoading] = useState(false);
 
   useEffect(() => {
     fetchLeads();
-    fetchEmailTemplates();
   }, []);
 
   const fetchLeads = () => {
@@ -117,20 +115,6 @@ const LeadManagement = () => {
       toast({
         title: "Error Fetching Leads",
         description: "Failed to retrieve leads from local storage.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const fetchEmailTemplates = () => {
-    try {
-      const templates = simpleEmailService.getTemplates();
-      setEmailTemplates(templates);
-    } catch (error) {
-      console.error("Error fetching email templates:", error);
-      toast({
-        title: "Error Fetching Templates",
-        description: "Failed to retrieve email templates.",
         variant: "destructive",
       });
     }
@@ -301,8 +285,6 @@ const LeadManagement = () => {
   };
 
   const sendEmailToLead = async (leadId: string, templateId: string) => {
-    console.log('📧 [LeadManagement] Sending email to current lead data:', currentLead);
-    
     if (!currentLead?.email) {
       toast({
         title: "No Email Address",
@@ -312,10 +294,19 @@ const LeadManagement = () => {
       return;
     }
 
-    console.log('📧 [LeadManagement] Sending to actual email:', currentLead.email);
+    const { emailService } = await import("@/services/emailService");
+
+    if (!emailService.isConfigured()) {
+      toast({
+        title: "Email Not Configured",
+        description: "Please configure EmailJS in Integration Settings first.",
+        variant: "destructive"
+      });
+      return;
+    }
 
     try {
-      const templates = simpleEmailService.getTemplates();
+      const templates = emailService.getTemplates();
       const template = templates.find(t => t.id === templateId);
       
       if (!template) {
@@ -327,56 +318,28 @@ const LeadManagement = () => {
         return;
       }
 
-      const emailData = simpleEmailService.prepareEmail(templateId, currentLead.email, {
-        customerName: currentLead.name
-      });
-
-      if (!emailData) {
-        toast({
-          title: "Email Preparation Failed",
-          description: "Could not prepare email from template.",
-          variant: "destructive"
-        });
-        return;
+      // Prepare email content
+      let emailBody = template.body;
+      if (currentLead.name) {
+        emailBody = emailBody.replace(/Dear Customer/g, `Dear ${currentLead.name}`);
       }
 
-      // Get the current server URL for email service
-      const getEmailServiceUrl = () => {
-        const hostname = window.location.hostname;
-        return `http://${hostname}:3002/api/send-email`;
-      };
-
-      const emailPayload = {
-        to: emailData.to,
-        subject: emailData.subject,
-        body: emailData.body,
-        fromEmail: user?.email,
-        fromName: user?.name
-      };
-
-      const response = await fetch(getEmailServiceUrl(), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(emailPayload)
+      const result = await emailService.sendEmail({
+        to: currentLead.email,
+        subject: template.subject,
+        body: emailBody,
+        from_name: user?.name,
+        from_email: user?.email
       });
-
-      const result = await response.json();
       
       if (result.success) {
-        // Log the email using simpleEmailService
-        simpleEmailService.logEmail({
+        emailService.logEmail({
           to: currentLead.email,
-          from: user?.email || "Unknown",
-          subject: emailData.subject,
-          body: emailData.body,
-          templateName: template.name,
-          agent: user?.name || "Unknown",
-          leadId: currentLead.id,
-          leadName: currentLead.name,
-          phone: currentLead.phone
-        });
+          subject: template.subject,
+          body: emailBody,
+          from_name: user?.name,
+          from_email: user?.email
+        }, 'sent');
 
         toast({
           title: "Email Sent Successfully",
@@ -386,10 +349,10 @@ const LeadManagement = () => {
         setShowEmailDialog(false);
         setSelectedEmailTemplate(null);
       } else {
-        throw new Error(result.message || 'Failed to send email');
+        throw new Error(result.message);
       }
     } catch (error) {
-      console.error('📧 [LeadManagement] Email send error:', error);
+      console.error('Email send error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       
       toast({
@@ -608,7 +571,7 @@ const LeadManagement = () => {
             </div>
             <div>
               <Label htmlFor="status">Status</Label>
-              <Select value={currentLead.status} onValueChange={(value) => handleSelectChange({ target: { name: 'status', value } } as any)}>
+              <Select value={currentLead.status} onValueChange={(value) => handleSelectChange({ target: { name: 'status', value } as any)}>
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select a status" />
                 </SelectTrigger>
@@ -622,7 +585,7 @@ const LeadManagement = () => {
             </div>
             <div>
               <Label htmlFor="priority">Priority</Label>
-              <Select value={currentLead.priority} onValueChange={(value) => handleSelectChange({ target: { name: 'priority', value } } as any)}>
+              <Select value={currentLead.priority} onValueChange={(value) => handleSelectChange({ target: { name: 'priority', value } as any)}>
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select priority" />
                 </SelectTrigger>
