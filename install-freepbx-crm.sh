@@ -45,6 +45,10 @@ main() {
     source "$SCRIPTS_DIR/setup-crm.sh"
     setup_crm_application
     
+    # Setup email service
+    source "$SCRIPTS_DIR/setup-email-service.sh"
+    setup_email_service
+    
     source "$SCRIPTS_DIR/configure-security.sh"
     configure_security
     restart_services
@@ -77,7 +81,13 @@ display_completion_message() {
     echo "  ✓ PHP $(php -v | head -n1 | cut -d' ' -f2)"
     echo "  ✓ Asterisk PBX"
     echo "  ✓ FreePBX CRM Application"
+    echo "  ✓ Email Service (Port 3002)"
     echo "  ✓ Security (UFW + Fail2ban)"
+    echo ""
+    echo "Services Status:"
+    echo "  - CRM Web: http://$IP_ADDRESS/crm/"
+    echo "  - Email Service: Running on port 3002"
+    echo "  - AMI Bridge: Running on port 3001"
     echo ""
     echo "Important Security Notes:"
     echo "  - Change ALL default passwords immediately"
