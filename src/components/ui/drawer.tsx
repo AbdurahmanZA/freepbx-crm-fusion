@@ -146,7 +146,6 @@ export {
   Drawer,
   DrawerPortal,
   DrawerOverlay,
-  DrawerMiniTab, // Export for parent usage
   DrawerTrigger,
   DrawerClose,
   DrawerContent,
