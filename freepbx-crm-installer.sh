@@ -160,7 +160,7 @@ setup_database() {
     log "Database setup completed"
 }
 
-# ... keep existing code (configure_webserver, configure_security, create_crm_files, init_database, main functions remain the same)
+# ... keep existing code (configure_webserver, configure_security functions remain the same)
 
 configure_webserver() {
     log "Configuring web server..."
@@ -235,6 +235,7 @@ configure_security() {
     ufw allow ssh
     ufw allow 80/tcp
     ufw allow 443/tcp
+    ufw allow 3002/tcp
     ufw --force enable
 
     # Configure fail2ban
@@ -272,6 +273,8 @@ create_crm_files() {
     # Create CRM directory
     mkdir -p "$CRM_PATH"
     cd "$CRM_PATH"
+
+    # ... keep existing code (CRM application files creation remains the same)
 
     # Create main index.php
     cat > index.php << 'EOF'
@@ -411,6 +414,7 @@ if (!isLoggedIn()) {
                             <li>Monitor leads and sales pipeline</li>
                             <li>Generate reports and analytics</li>
                             <li>Integrate with FreePBX phone system</li>
+                            <li>Send emails via SMTP integration</li>
                         </ul>
                         <div class="alert alert-info">
                             <strong>Getting Started:</strong> Use the navigation menu to explore different sections of the CRM.
@@ -427,7 +431,7 @@ if (!isLoggedIn()) {
 EOF
 
     # Create directories
-    mkdir -p config includes assets/css assets/js
+    mkdir -p config includes assets/css assets/js server
 
     # Create database configuration
     cat > config/database.php << EOF
@@ -584,6 +588,210 @@ EOF
     log "CRM application files created"
 }
 
+# Setup email service automatically
+setup_email_service() {
+    log "Setting up email service..."
+    
+    # Create email service files
+    cat > $CRM_PATH/server/email-service.js << 'EOF'
+const express = require('express');
+const nodemailer = require('nodemailer');
+const cors = require('cors');
+const fs = require('fs');
+const path = require('path');
+
+const app = express();
+app.use(express.json());
+app.use(cors());
+
+const configPath = path.join(__dirname, 'config.json');
+
+// Initialize config file if it doesn't exist
+if (!fs.existsSync(configPath)) {
+  fs.writeFileSync(configPath, JSON.stringify({}, null, 2));
+}
+
+// Get SMTP configuration from config.json
+function getSMTPConfig() {
+  try {
+    const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    return config.smtp || {};
+  } catch (error) {
+    console.error('Error reading config:', error);
+    return {};
+  }
+}
+
+// Save SMTP configuration to config.json
+function saveSMTPConfig(smtpConfig) {
+  try {
+    let config = {};
+    if (fs.existsSync(configPath)) {
+      config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    }
+    config.smtp = smtpConfig;
+    fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+    return true;
+  } catch (error) {
+    console.error('Error saving config:', error);
+    return false;
+  }
+}
+
+// Test SMTP connection
+app.post('/api/test-smtp', async (req, res) => {
+  const { host, port, username, password, encryption } = req.body;
+  
+  try {
+    const transporter = nodemailer.createTransporter({
+      host: host,
+      port: parseInt(port),
+      secure: encryption === 'ssl',
+      auth: {
+        user: username,
+        pass: password
+      },
+      tls: {
+        rejectUnauthorized: false
+      }
+    });
+
+    await transporter.verify();
+    
+    // Save working config
+    saveSMTPConfig(req.body);
+    
+    res.json({ success: true, message: 'SMTP connection successful' });
+  } catch (error) {
+    console.error('SMTP test failed:', error);
+    res.status(400).json({ 
+      success: false, 
+      message: 'SMTP connection failed', 
+      error: error.message 
+    });
+  }
+});
+
+// Send email
+app.post('/api/send-email', async (req, res) => {
+  const { to, subject, body, fromEmail, fromName } = req.body;
+  
+  try {
+    const smtpConfig = getSMTPConfig();
+    
+    if (!smtpConfig.host || !smtpConfig.username) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'SMTP not configured. Please configure SMTP settings first.' 
+      });
+    }
+
+    const transporter = nodemailer.createTransporter({
+      host: smtpConfig.host,
+      port: parseInt(smtpConfig.port),
+      secure: smtpConfig.encryption === 'ssl',
+      auth: {
+        user: smtpConfig.username,
+        pass: smtpConfig.password
+      },
+      tls: {
+        rejectUnauthorized: false
+      }
+    });
+
+    const mailOptions = {
+      from: `${fromName || smtpConfig.fromName} <${fromEmail || smtpConfig.fromEmail}>`,
+      to: to,
+      subject: subject,
+      text: body,
+      html: body.replace(/\n/g, '<br>')
+    };
+
+    const result = await transporter.sendMail(mailOptions);
+    
+    res.json({ 
+      success: true, 
+      message: 'Email sent successfully',
+      messageId: result.messageId
+    });
+  } catch (error) {
+    console.error('Email send failed:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to send email', 
+      error: error.message 
+    });
+  }
+});
+
+const PORT = process.env.EMAIL_PORT || 3002;
+app.listen(PORT, () => {
+  console.log(`Email service running on port ${PORT}`);
+});
+EOF
+
+    cat > $CRM_PATH/server/package.json << 'EOF'
+{
+  "name": "crm-email-service",
+  "version": "1.0.0",
+  "description": "Email service for CRM",
+  "main": "email-service.js",
+  "scripts": {
+    "start": "node email-service.js",
+    "dev": "nodemon email-service.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "nodemailer": "^6.9.7",
+    "cors": "^2.8.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  }
+}
+EOF
+
+    # Install Node.js dependencies
+    cd $CRM_PATH/server
+    npm install
+    
+    # Create systemd service
+    cat > /etc/systemd/system/email-service.service << EOF
+[Unit]
+Description=FreePBX CRM Email Service
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=$CRM_PATH/server
+ExecStart=/usr/bin/node email-service.js
+Restart=always
+RestartSec=10
+Environment=NODE_ENV=production
+Environment=EMAIL_PORT=3002
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+    # Set proper permissions
+    chown -R www-data:www-data $CRM_PATH/server
+    chmod -R 755 $CRM_PATH/server
+    
+    # Enable and start service
+    systemctl daemon-reload
+    systemctl enable email-service
+    systemctl start email-service
+    
+    sleep 3
+    if systemctl is-active --quiet email-service; then
+        log "Email service started successfully on port 3002"
+    else
+        warn "Email service failed to start - check logs with: sudo journalctl -u email-service"
+    fi
+}
+
 init_database() {
     log "Initializing database tables..."
     
@@ -647,6 +855,7 @@ main() {
     configure_webserver
     configure_security
     create_crm_files
+    setup_email_service
     init_database
     
     log "Installation completed successfully!"
@@ -656,6 +865,10 @@ main() {
     echo "=============================================="
     echo "Access URL: http://$IP_ADDRESS/crm/"
     echo "Default Login: admin / admin123"
+    echo ""
+    echo "Services:"
+    echo "  - Web Interface: http://$IP_ADDRESS/crm/"
+    echo "  - Email Service: Running on port 3002"
     echo ""
     echo "Database Details:"
     echo "  Host: localhost"
