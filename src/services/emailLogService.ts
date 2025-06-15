@@ -2,6 +2,7 @@
 export interface EmailLog {
   id: string;
   to: string;
+  from: string; // Added missing from field
   subject: string;
   body: string;
   templateName?: string;
