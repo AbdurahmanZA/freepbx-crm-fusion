@@ -4,53 +4,45 @@ import { Button } from "@/components/ui/button";
 
 const themes = [
   {
-    label: "Jericho Blue/Orange",
-    value: "jericho",
+    label: "Ocean",
+    value: "ocean",
+    description: "Deep blue with coral accents",
     preview: (
       <span className="flex gap-1">
-        <span className="w-4 h-4 rounded" style={{ background: "#2D5563" }} />
-        <span className="w-4 h-4 rounded" style={{ background: "#E69A3A" }} />
-        <span className="w-4 h-4 rounded" style={{ background: "#FFFFFF", border: "1px solid #ccc" }} />
+        <span className="w-4 h-4 rounded" style={{ background: "#1e40af" }} />
+        <span className="w-4 h-4 rounded" style={{ background: "#f97316" }} />
+        <span className="w-4 h-4 rounded" style={{ background: "#f8fafc", border: "1px solid #e2e8f0" }} />
       </span>
     ),
   },
   {
-    label: "Indigo/Teal",
-    value: "indigo",
+    label: "Forest",
+    value: "forest",
+    description: "Rich green with warm browns",
     preview: (
       <span className="flex gap-1">
-        <span className="w-4 h-4 rounded" style={{ background: "#364f6b" }} />
-        <span className="w-4 h-4 rounded" style={{ background: "#3fc1c9" }} />
-        <span className="w-4 h-4 rounded" style={{ background: "#f5f7fa", border: "1px solid #ccc" }} />
+        <span className="w-4 h-4 rounded" style={{ background: "#064e3b" }} />
+        <span className="w-4 h-4 rounded" style={{ background: "#92400e" }} />
+        <span className="w-4 h-4 rounded" style={{ background: "#fefefe", border: "1px solid #d6d3d1" }} />
       </span>
     ),
   },
   {
-    label: "Emerald/Slate",
-    value: "emerald",
+    label: "Sunset",
+    value: "sunset",
+    description: "Purple with golden highlights",
     preview: (
       <span className="flex gap-1">
-        <span className="w-4 h-4 rounded" style={{ background: "#059669" }} />
-        <span className="w-4 h-4 rounded" style={{ background: "#374151" }} />
-        <span className="w-4 h-4 rounded" style={{ background: "#f3f4f6", border: "1px solid #ccc" }} />
-      </span>
-    ),
-  },
-  {
-    label: "Minimalist Light",
-    value: "minimal",
-    preview: (
-      <span className="flex gap-1">
-        <span className="w-4 h-4 rounded" style={{ background: "#F8FAFC" }} />
-        <span className="w-4 h-4 rounded" style={{ background: "#e5e7eb" }} />
-        <span className="w-4 h-4 rounded" style={{ background: "#222", border: "1px solid #ccc" }} />
+        <span className="w-4 h-4 rounded" style={{ background: "#7c3aed" }} />
+        <span className="w-4 h-4 rounded" style={{ background: "#d97706" }} />
+        <span className="w-4 h-4 rounded" style={{ background: "#fef7f7", border: "1px solid #f3e8ff" }} />
       </span>
     ),
   },
 ];
 
 export const ThemePicker = () => {
-  const [selected, setSelected] = useState<string>(() => localStorage.getItem("theme-style") || "jericho");
+  const [selected, setSelected] = useState<string>(() => localStorage.getItem("theme-style") || "ocean");
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", selected);
@@ -58,7 +50,7 @@ export const ThemePicker = () => {
   }, [selected]);
 
   return (
-    <div className="flex flex-col gap-1 w-full max-w-xs">
+    <div className="flex flex-col gap-2 w-full max-w-sm">
       <label className="text-sm font-medium mb-1">Choose Theme</label>
       <div className="flex flex-col gap-2">
         {themes.map((theme) => (
@@ -66,11 +58,14 @@ export const ThemePicker = () => {
             key={theme.value}
             size="sm"
             variant={selected === theme.value ? "default" : "outline"}
-            className="flex items-center gap-2 justify-start"
+            className="flex items-center gap-3 justify-start p-3 h-auto"
             onClick={() => setSelected(theme.value)}
           >
             {theme.preview}
-            <span>{theme.label}</span>
+            <div className="flex flex-col items-start">
+              <span className="font-medium">{theme.label}</span>
+              <span className="text-xs opacity-70">{theme.description}</span>
+            </div>
           </Button>
         ))}
       </div>
