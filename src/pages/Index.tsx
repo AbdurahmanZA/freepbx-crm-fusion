@@ -51,6 +51,13 @@ const Index = () => {
     console.log('Connection test completed:', results);
   };
 
+  // Close drawer when clicking on the main content
+  const handleMainContentClick = () => {
+    if (drawerOpen) {
+      setDrawerOpen(false);
+    }
+  };
+
   // Mock call history data
   const mockCallHistory = [
     {
@@ -86,12 +93,12 @@ const Index = () => {
     { id: "call-logs", label: "Call Logs", component: <CallLogs /> },
     { id: "reports", label: "Reports & Analytics", component: <ReportsAnalytics userRole={userRole} /> },
     { id: "knowledge-base", label: "Knowledge Base", component: <KnowledgeBase userRole={userRole} /> },
+    { id: "integrations", label: "Integration Settings", component: <IntegrationSettings /> },
   ];
 
   // Admin-only tabs
   const adminTabs = [
     { id: "users", label: "User Management", component: <UserManagement /> },
-    { id: "integrations", label: "Integration Settings", component: <IntegrationSettings /> },
     { id: "system", label: "System Status", component: <SystemStatus /> },
     { id: "database", label: "Database Viewer", component: <DatabaseViewer /> },
     { id: "connection", label: "Connection Test", component: <ConnectionTest onTestComplete={handleTestComplete} /> },
@@ -101,7 +108,10 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto p-4 space-y-6">
+      <div 
+        className="container mx-auto p-4 space-y-6"
+        onClick={handleMainContentClick}
+      >
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold text-foreground">FreePBX CRM Dashboard</h1>
@@ -112,7 +122,7 @@ const Index = () => {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3 lg:grid-cols-4 xl:grid-cols-8 gap-1">
+          <TabsList className="grid w-full grid-cols-3 lg:grid-cols-4 xl:grid-cols-9 gap-1">
             {allTabs.map((tab) => (
               <TabsTrigger
                 key={tab.id}
