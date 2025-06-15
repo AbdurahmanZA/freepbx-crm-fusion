@@ -60,7 +60,8 @@ const SMTPConfigCard = ({
 
   const handleTestConnection = async () => {
     try {
-      const response = await fetch('/api/test-smtp', {
+      // Use the correct URL for your email service
+      const response = await fetch('http://localhost:3002/api/test-smtp', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

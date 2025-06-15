@@ -133,7 +133,11 @@ const SimpleEmailPanel: React.FC<SimpleEmailPanelProps> = ({
 
       console.log('📧 [SimpleEmailPanel] Email payload:', emailPayload);
 
-      const response = await fetch('/api/send-email', {
+      // Use the correct URL for your email service
+      const emailServiceUrl = 'http://localhost:3002/api/send-email';
+      console.log('📧 [SimpleEmailPanel] Using email service URL:', emailServiceUrl);
+
+      const response = await fetch(emailServiceUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
