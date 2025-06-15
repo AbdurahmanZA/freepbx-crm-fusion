@@ -25,6 +25,9 @@ import { useToast } from "@/hooks/use-toast";
 import { useAMIContext } from "@/contexts/AMIContext";
 import { useAuth } from "@/contexts/AuthContext";
 import LeadEmailTemplateDialog from "@/components/lead-management/LeadEmailTemplateDialog";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerClose } from "@/components/ui/drawer";
+import EmailTimeline from "@/components/email-history/EmailTimeline";
+import { emailLogService } from "@/services/emailLogService";
 
 interface LeadManagementProps {
   userRole: string;
@@ -513,6 +516,20 @@ const LeadManagement = ({ userRole }: LeadManagementProps) => {
     lead.phone.includes(searchTerm)
   );
 
+  // Drawer state for history view
+  const [historyDrawerOpen, setHistoryDrawerOpen] = useState(false);
+  const [historyLead, setHistoryLead] = useState<Lead | null>(null);
+
+  // Email log for history drawer
+  const [historyEmailLogs, setHistoryEmailLogs] = useState([]);
+  useEffect(() => {
+    if (historyLead) {
+      // Try by leadId (string)
+      const logs = emailLogService.getByLeadId(String(historyLead.id));
+      setHistoryEmailLogs(logs);
+    }
+  }, [historyLead, historyDrawerOpen]);
+  
   return (
     <div className="space-y-6">
       <Card>
@@ -657,52 +674,70 @@ const LeadManagement = ({ userRole }: LeadManagementProps) => {
                           <p className="text-sm text-gray-600 mt-1">{lead.notes}</p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Button 
-                          size="sm" 
-                          onClick={() => handleClickToDial(lead.phone, lead.name, lead.id)}
-                          disabled={!user?.extension || !isConnected}
-                          className="bg-green-600 hover:bg-green-700 flex items-center gap-1"
-                        >
-                          <PhoneCall className="h-3 w-3" />
-                          Call
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          onClick={() => handleEmailFormClick(lead)}
-                          className="bg-blue-600 hover:bg-blue-700 flex items-center gap-1"
-                        >
-                          <Send className="h-3 w-3" />
-                          Email Form
-                        </Button>
-                        {canEditLeads && (
+                      <div className="flex flex-col gap-2">
+                        <div className="flex gap-2">
+                          <Button 
+                            size="sm" 
+                            onClick={() => handleClickToDial(lead.phone, lead.name, lead.id)}
+                            disabled={!user?.extension || !isConnected}
+                            className="bg-green-600 hover:bg-green-700 flex items-center gap-1"
+                          >
+                            <PhoneCall className="h-3 w-3" />
+                            Call
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            onClick={() => handleEmailFormClick(lead)}
+                            className="bg-blue-600 hover:bg-blue-700 flex items-center gap-1"
+                          >
+                            <Send className="h-3 w-3" />
+                            Email Form
+                          </Button>
+                        </div>
+                        <div className="flex gap-2">
+                          {canEditLeads && (
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              onClick={() => handleEditLead(lead)}
+                              className="flex items-center gap-1"
+                            >
+                              <Edit className="h-3 w-3" />
+                              Edit
+                            </Button>
+                          )}
                           <Button 
                             size="sm" 
                             variant="outline" 
-                            onClick={() => handleEditLead(lead)}
+                            onClick={() => handleToggleQualified(lead.id)}
                             className="flex items-center gap-1"
                           >
                             <Edit className="h-3 w-3" />
-                            Edit
+                            {lead.status === 'qualified' ? 'Unqualify' : 'Qualify'}
                           </Button>
-                        )}
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          onClick={() => handleToggleQualified(lead.id)}
-                          className="flex items-center gap-1"
-                        >
-                          <Edit className="h-3 w-3" />
-                          {lead.status === 'qualified' ? 'Unqualify' : 'Qualify'}
-                        </Button>
-                        <Button size="sm" variant="outline" className="flex items-center gap-1">
-                          <MessageSquare className="h-3 w-3" />
-                          Notes
-                        </Button>
-                        <Button size="sm" variant="outline" className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
-                          Schedule
-                        </Button>
+                          <Button size="sm" variant="outline" className="flex items-center gap-1">
+                            <MessageSquare className="h-3 w-3" />
+                            Notes
+                          </Button>
+                          <Button size="sm" variant="outline" className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            Schedule
+                          </Button>
+                          {/* History Button */}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="flex items-center gap-1"
+                            onClick={() => {
+                              setHistoryLead(lead);
+                              setHistoryDrawerOpen(true);
+                            }}
+                            title="View Email History"
+                          >
+                            <Mail className="h-3 w-3" />
+                            History
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   )}
@@ -725,6 +760,26 @@ const LeadManagement = ({ userRole }: LeadManagementProps) => {
         onSend={handleTemplateSend}
         loading={sendingEmail}
       />
+      {/* Email History Drawer (Sidebar) */}
+      <Drawer open={historyDrawerOpen} onOpenChange={setHistoryDrawerOpen}>
+        <DrawerContent>
+          <DrawerHeader>
+            <DrawerTitle>
+              Email History for {historyLead?.name}
+            </DrawerTitle>
+            <DrawerClose asChild>
+              <Button variant="ghost" className="absolute right-4 top-4">Close</Button>
+            </DrawerClose>
+          </DrawerHeader>
+          <div className="p-4 pt-0">
+            {historyLead ? (
+              <EmailTimeline emailLogs={historyEmailLogs} />
+            ) : (
+              <div className="text-center text-muted-foreground text-sm py-4">No contact selected.</div>
+            )}
+          </div>
+        </DrawerContent>
+      </Drawer>
     </div>
   );
 };
