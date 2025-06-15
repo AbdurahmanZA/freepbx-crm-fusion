@@ -65,6 +65,18 @@ const UnifiedDialer = ({ onCallInitiated, disabled, initialData }: UnifiedDialer
     return saved ? JSON.parse(saved) : [];
   };
 
+  // Utility to get a matched lead for the current dialer context
+  const getCurrentLead = (): any => {
+    // Try direct initialData, fallback to localStorage leads match
+    if (initialData?.leadData?.id) return initialData.leadData;
+    const leads = JSON.parse(localStorage.getItem('leads') || '[]');
+    // Try to match by phone or email
+    return leads.find((lead: any) =>
+      (lead.phone && phoneNumber && lead.phone.replace(/[\s\-\(\)]/g, '') === phoneNumber.replace(/[\s\-\(\)]/g, '')) ||
+      (lead.email && contactEmail && lead.email.toLowerCase() === contactEmail.toLowerCase())
+    );
+  };
+
   // This new useEffect populates the dialer when props are received
   useEffect(() => {
     if (initialData) {
@@ -334,16 +346,19 @@ const UnifiedDialer = ({ onCallInitiated, disabled, initialData }: UnifiedDialer
   const sendEmailTemplate = () => {
     if (!emailPreviewData) return;
 
-    // Save to email logs
+    // Find the best matching lead for logging
+    const matchedLead = getCurrentLead();
+    const matchedLeadId = matchedLead?.id ? String(matchedLead.id) : undefined;
+
+    // Save to email logs with consistent leadId for timeline filtering
     emailLogService.logEmail({
       to: emailPreviewData.to,
       subject: emailPreviewData.subject,
       body: emailPreviewData.body,
       templateName: emailPreviewData.templateName,
       agent: user?.name || "Unknown",
-      // Try to log lead/contact info
-      leadId: initialData?.leadData?.id || undefined,
-      leadName: contactName,
+      leadId: matchedLeadId,
+      leadName: matchedLead?.name || contactName,
       phone: phoneNumber,
       extra: {
         dialerPanel: true,
