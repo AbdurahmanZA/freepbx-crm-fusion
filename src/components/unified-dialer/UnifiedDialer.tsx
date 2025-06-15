@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from "react";
 import {
   Card,
@@ -14,9 +15,7 @@ import { Phone, PhoneCall, Users, User, Clock, ChevronDown, Mail } from "lucide-
 import { useToast } from "@/hooks/use-toast";
 import { useAMIContext } from "@/contexts/AMIContext";
 import { useAuth } from "@/contexts/AuthContext";
-import UnifiedDialerEmailPanel from "./UnifiedDialerEmailPanel";
-import { buildTemplateVars, findMatchedLead } from "./leadUtils";
-import { emailLogService } from "@/services/emailLogService";
+import SimpleEmailPanel from "./SimpleEmailPanel";
 
 interface UnifiedDialerProps {
   onCallInitiated: (callData: {
@@ -53,18 +52,6 @@ const UnifiedDialer = ({ onCallInitiated, disabled, initialData }: UnifiedDialer
     status: "ringing" | "connected" | "on-hold" | "ended";
   } | null>(null);
 
-  // Email panel state
-  const [isEmailExpanded, setIsEmailExpanded] = useState(false);
-  const [selectedTemplate, setSelectedTemplate] = useState("");
-  const [showEmailPreview, setShowEmailPreview] = useState(false);
-  const [emailPreviewData, setEmailPreviewData] = useState<any>(null);
-
-  // Get email templates from localStorage
-  const getEmailTemplates = () => {
-    const saved = localStorage.getItem('email_templates');
-    return saved ? JSON.parse(saved) : [];
-  };
-
   // Utility to get the current leads from localStorage
   const getCurrentLeads = () => {
     try {
@@ -72,19 +59,6 @@ const UnifiedDialer = ({ onCallInitiated, disabled, initialData }: UnifiedDialer
     } catch {
       return [];
     }
-  };
-
-  // Utility to get a matched lead for the current dialer context
-  const getCurrentLead = (): any => {
-    // Try direct initialData first
-    if (initialData?.leadData?.id) return initialData.leadData;
-    
-    // Get fresh leads from localStorage and match by phone or email
-    const leads = getCurrentLeads();
-    return leads.find((lead: any) =>
-      (lead.phone && phoneNumber && lead.phone.replace(/[\s\-\(\)]/g, '') === phoneNumber.replace(/[\s\-\(\)]/g, '')) ||
-      (lead.email && contactEmail && lead.email.toLowerCase() === contactEmail.toLowerCase())
-    );
   };
 
   // This useEffect populates the dialer when props are received
@@ -99,12 +73,28 @@ const UnifiedDialer = ({ onCallInitiated, disabled, initialData }: UnifiedDialer
       setPhoneNumber(phone);
       setContactName(name);
       setContactEmail(email);
-
-      if (email) {
-        setIsEmailExpanded(true);
-      }
     }
   }, [initialData]);
+
+  // Function to lookup and populate contact data from leads
+  const populateContactFromLeads = (phone: string, name?: string) => {
+    const leads = getCurrentLeads();
+    const normalizedPhone = phone.replace(/[\s\-\(\)]/g, '');
+    
+    const matchedLead = leads.find((lead: any) => {
+      const leadPhone = (lead.phone || '').replace(/[\s\-\(\)]/g, '');
+      return leadPhone === normalizedPhone;
+    });
+
+    if (matchedLead) {
+      console.log('📧 [UnifiedDialer] Found matching lead:', matchedLead);
+      setContactName(matchedLead.name || name || "");
+      setContactEmail(matchedLead.email || "");
+    } else {
+      setContactName(name || "");
+      setContactEmail("");
+    }
+  };
 
   // Monitor AMI events for call status updates
   useEffect(() => {
@@ -270,10 +260,6 @@ const UnifiedDialer = ({ onCallInitiated, disabled, initialData }: UnifiedDialer
             contactName ? contactName : phoneNumber
           } at ${phoneNumber} from PJSIP extension ${user.extension}`,
         });
-
-        // DON'T clear the fields immediately - keep them visible
-        // setPhoneNumber("");
-        // setContactName("");
       } else {
         throw new Error("AMI originate call failed");
       }
@@ -286,124 +272,6 @@ const UnifiedDialer = ({ onCallInitiated, disabled, initialData }: UnifiedDialer
         variant: "destructive",
       });
     }
-  };
-
-  // Function to lookup and populate contact data from leads
-  const populateContactFromLeads = (phone: string, name?: string) => {
-    const leads = getCurrentLeads();
-    const normalizedPhone = phone.replace(/[\s\-\(\)]/g, '');
-    
-    const matchedLead = leads.find((lead: any) => {
-      const leadPhone = (lead.phone || '').replace(/[\s\-\(\)]/g, '');
-      return leadPhone === normalizedPhone;
-    });
-
-    if (matchedLead) {
-      console.log('📧 [UnifiedDialer] Found matching lead:', matchedLead);
-      setContactName(matchedLead.name || name || "");
-      setContactEmail(matchedLead.email || "");
-    } else {
-      setContactName(name || "");
-      setContactEmail("");
-    }
-  };
-
-  // Email template functions
-  const prepareEmailPreview = () => {
-    const templates = getEmailTemplates();
-    const template = templates.find((t: any) => t.id === selectedTemplate);
-    
-    // Use the current contactEmail from the input field
-    const currentEmail = contactEmail.trim();
-    
-    if (!template || !currentEmail) {
-      toast({
-        title: "Missing Information",
-        description: !template ? "Please select a template." : "Please enter an email address.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    console.log('📧 [UnifiedDialer] Preparing email preview with email:', currentEmail);
-
-    // Get lead data for template variables - use fresh data from localStorage
-    const leads = getCurrentLeads();
-    const matchedLead = findMatchedLead({ leads, phoneNumber });
-    
-    const templateVars = buildTemplateVars({
-      lead: matchedLead,
-      userName: user?.name,
-      fallbackName: contactName,
-      fallbackPhone: phoneNumber,
-      fallbackEmail: currentEmail,
-      contactEmail: currentEmail,
-      phoneNumber,
-    });
-
-    // Replace template variables
-    let subject = template.subject;
-    let body = template.body;
-    
-    Object.entries(templateVars).forEach(([key, value]) => {
-      const regex = new RegExp(`{{${key}}}`, 'g');
-      subject = subject.replace(regex, value as string);
-      body = body.replace(regex, value as string);
-    });
-
-    setEmailPreviewData({
-      to: currentEmail, // Use the current email from input
-      templateName: template.name,
-      subject,
-      body
-    });
-    
-    setShowEmailPreview(true);
-  };
-
-  const sendEmailTemplate = () => {
-    if (!emailPreviewData) return;
-
-    console.log('📧 [UnifiedDialer] Sending email to:', emailPreviewData.to);
-
-    // Find the best matching lead for logging - use fresh data
-    const leads = getCurrentLeads();
-    const matchedLead = leads.find((lead: any) =>
-      (lead.phone && phoneNumber && lead.phone.replace(/[\s\-\(\)]/g, '') === phoneNumber.replace(/[\s\-\(\)]/g, '')) ||
-      (lead.email && emailPreviewData.to && lead.email.toLowerCase() === emailPreviewData.to.toLowerCase())
-    );
-    
-    const matchedLeadId = matchedLead?.id ? String(matchedLead.id) : undefined;
-
-    // Save to email logs with the actual email being sent to
-    emailLogService.logEmail({
-      to: emailPreviewData.to, // This should be the email from the input field
-      from: user?.email || "Unknown",
-      subject: emailPreviewData.subject,
-      body: emailPreviewData.body,
-      templateName: emailPreviewData.templateName,
-      agent: user?.name || "Unknown",
-      leadId: matchedLeadId,
-      leadName: matchedLead?.name || contactName,
-      phone: phoneNumber,
-      extra: {
-        dialerPanel: true,
-        sentFromDialer: true,
-        actualRecipient: emailPreviewData.to
-      }
-    });
-
-    // Here you would implement actual email sending
-    // For now, just show success message
-    toast({
-      title: "Email Sent",
-      description: `Email sent to ${emailPreviewData.to}`,
-    });
-
-    console.log('📧 [UnifiedDialer] Email logged and sent to:', emailPreviewData.to);
-
-    setShowEmailPreview(false);
-    setIsEmailExpanded(false);
   };
 
   return (
@@ -438,7 +306,7 @@ const UnifiedDialer = ({ onCallInitiated, disabled, initialData }: UnifiedDialer
             <p className="text-destructive text-xs">No extension assigned</p>
           )}
 
-          {/* Active call status - keep existing code */}
+          {/* Active call status */}
           {activeCall && (
             <div className="p-2 bg-green-50 border border-green-200 rounded">
               <div className="flex items-center justify-between">
@@ -459,7 +327,7 @@ const UnifiedDialer = ({ onCallInitiated, disabled, initialData }: UnifiedDialer
             </div>
           )}
 
-          {/* Dialer Panel - Enhanced with email sync */}
+          {/* Dialer Panel */}
           <div className="grid grid-cols-2 gap-2">
             <Input
               value={phoneNumber}
@@ -499,22 +367,13 @@ const UnifiedDialer = ({ onCallInitiated, disabled, initialData }: UnifiedDialer
         </CardContent>
       </Card>
 
-      {/* Email Template Panel */}
-      <UnifiedDialerEmailPanel
-        isEmailExpanded={isEmailExpanded}
-        setIsEmailExpanded={setIsEmailExpanded}
+      {/* Simplified Email Panel */}
+      <SimpleEmailPanel
         contactEmail={contactEmail}
         setContactEmail={setContactEmail}
-        selectedTemplate={selectedTemplate}
-        setSelectedTemplate={setSelectedTemplate}
-        getEmailTemplates={getEmailTemplates}
-        prepareEmailPreview={prepareEmailPreview}
-        showEmailPreview={showEmailPreview}
-        setShowEmailPreview={setShowEmailPreview}
-        emailPreviewData={emailPreviewData}
-        sendEmailTemplate={sendEmailTemplate}
         contactName={contactName}
         phoneNumber={phoneNumber}
+        leadId={initialData?.leadData?.id}
       />
     </div>
   );

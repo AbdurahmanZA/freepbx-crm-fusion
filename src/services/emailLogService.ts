@@ -1,4 +1,7 @@
 
+// Legacy email log service - kept for backward compatibility
+// New code should use simpleEmailService instead
+
 export interface EmailLog {
   id: string;
   to: string;
@@ -20,6 +23,7 @@ export class EmailLogService {
   private key = EMAIL_LOG_KEY;
 
   logEmail(email: Omit<EmailLog, "id" | "dateSent"> & { dateSent?: string }) {
+    console.warn("EmailLogService is deprecated. Use simpleEmailService instead.");
     const logs = this.getAll();
     const newLog: EmailLog = {
       ...email,
