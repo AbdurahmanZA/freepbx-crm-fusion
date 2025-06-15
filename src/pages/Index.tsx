@@ -24,8 +24,16 @@ const Index = () => {
 
   const userRole = user?.role || "agent";
 
-  const handleCallInitiated = (phoneNumber: string, contactName?: string) => {
-    console.log(`Call initiated to ${phoneNumber}`, contactName ? `for ${contactName}` : '');
+  const handleCallInitiated = (callData: {
+    id: string;
+    leadName: string;
+    phone: string;
+    duration: string;
+    status: "connected" | "ringing" | "on-hold" | "ended";
+    startTime: Date;
+    leadId?: string;
+  }) => {
+    console.log(`Call initiated:`, callData);
   };
 
   const handleTestComplete = (results: { freepbx: boolean; database: boolean }) => {
