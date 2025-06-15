@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,6 +35,7 @@ const SimpleEmailPanel: React.FC<SimpleEmailPanelProps> = ({
   const [customBody, setCustomBody] = useState("");
   const [showPreview, setShowPreview] = useState(false);
   const [previewEmail, setPreviewEmail] = useState<EmailToSend | null>(null);
+  const [isSending, setIsSending] = useState(false);
 
   const templates = simpleEmailService.getTemplates();
 
@@ -97,34 +97,87 @@ const SimpleEmailPanel: React.FC<SimpleEmailPanelProps> = ({
     setShowPreview(true);
   };
 
-  const handleSend = () => {
+  const logEmailSent = (email: EmailToSend, status: 'sent' | 'failed', errorMessage?: string) => {
+    const logs = JSON.parse(localStorage.getItem('email_send_logs') || '[]');
+    const newLog = {
+      id: `email_${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      to: email.to,
+      subject: email.subject,
+      status,
+      template: email.templateName,
+      errorMessage
+    };
+    logs.unshift(newLog);
+    localStorage.setItem('email_send_logs', JSON.stringify(logs.slice(0, 50))); // Keep last 50 logs
+  };
+
+  const handleSend = async () => {
     if (!previewEmail) return;
 
-    // Log the email
-    simpleEmailService.logEmail({
-      to: previewEmail.to,
-      from: user?.email || "Unknown",
-      subject: previewEmail.subject,
-      body: previewEmail.body,
-      templateName: previewEmail.templateName,
-      agent: user?.name || "Unknown",
-      leadId,
-      leadName: contactName,
-      phone: phoneNumber
-    });
-
-    toast({
-      title: "Email Sent",
-      description: `Email sent to ${previewEmail.to}`,
-    });
-
-    setShowPreview(false);
-    setIsExpanded(false);
+    setIsSending(true);
     
-    // Reset form
-    setSelectedTemplateId("");
-    setCustomSubject("");
-    setCustomBody("");
+    try {
+      const response = await fetch('/api/send-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          to: previewEmail.to,
+          subject: previewEmail.subject,
+          body: previewEmail.body,
+          fromEmail: user?.email,
+          fromName: user?.name
+        })
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        // Log the email as sent
+        simpleEmailService.logEmail({
+          to: previewEmail.to,
+          from: user?.email || "Unknown",
+          subject: previewEmail.subject,
+          body: previewEmail.body,
+          templateName: previewEmail.templateName,
+          agent: user?.name || "Unknown",
+          leadId,
+          leadName: contactName,
+          phone: phoneNumber
+        });
+
+        logEmailSent(previewEmail, 'sent');
+
+        toast({
+          title: "Email Sent Successfully",
+          description: `Email sent to ${previewEmail.to}`,
+        });
+
+        setShowPreview(false);
+        setIsExpanded(false);
+        
+        // Reset form
+        setSelectedTemplateId("");
+        setCustomSubject("");
+        setCustomBody("");
+      } else {
+        throw new Error(result.message || 'Failed to send email');
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      
+      logEmailSent(previewEmail, 'failed', errorMessage);
+      
+      toast({
+        title: "Email Send Failed",
+        description: `Could not send email: ${errorMessage}`,
+        variant: "destructive"
+      });
+    } finally {
+      setIsSending(false);
+    }
   };
 
   return (
@@ -250,20 +303,20 @@ const SimpleEmailPanel: React.FC<SimpleEmailPanelProps> = ({
               
               <div className="bg-green-50 p-3 rounded border border-green-200">
                 <p className="text-sm text-green-700">
-                  <strong>Ready to send:</strong> This email will be sent to {previewEmail.to} and logged in your email history.
+                  <strong>Ready to send:</strong> This email will be sent via SMTP to {previewEmail.to} and logged in your email history.
                 </p>
               </div>
             </div>
           )}
           
           <DialogFooter className="flex gap-2">
-            <Button variant="outline" onClick={() => setShowPreview(false)}>
+            <Button variant="outline" onClick={() => setShowPreview(false)} disabled={isSending}>
               <X className="h-4 w-4 mr-2" />
               Cancel
             </Button>
-            <Button onClick={handleSend}>
+            <Button onClick={handleSend} disabled={isSending}>
               <Send className="h-4 w-4 mr-2" />
-              Send Email
+              {isSending ? 'Sending...' : 'Send Email'}
             </Button>
           </DialogFooter>
         </DialogContent>

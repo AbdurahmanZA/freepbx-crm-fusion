@@ -27,5 +27,15 @@
     "level": "debug",
     "enableConsole": true,
     "enableFile": true
+  },
+  "smtp": {
+    "enabled": false,
+    "host": "",
+    "port": "587",
+    "username": "",
+    "password": "",
+    "encryption": "tls",
+    "fromEmail": "",
+    "fromName": ""
   }
 }

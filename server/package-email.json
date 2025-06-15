@@ -1,0 +1,19 @@
+
+{
+  "name": "crm-email-service",
+  "version": "1.0.0",
+  "description": "Email service for CRM",
+  "main": "email-service.js",
+  "scripts": {
+    "start": "node email-service.js",
+    "dev": "nodemon email-service.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "nodemailer": "^6.9.7",
+    "cors": "^2.8.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  }
+}

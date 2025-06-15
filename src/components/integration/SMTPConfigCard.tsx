@@ -47,50 +47,54 @@ const SMTPConfigCard = ({
   const { toast } = useToast();
   const [showPassword, setShowPassword] = useState(false);
   
-  // Mock email logs - in a real app, this would come from your backend
-  const [emailLogs] = useState<EmailLog[]>([
-    {
-      id: '1',
-      timestamp: new Date().toISOString(),
-      to: 'customer@example.com',
-      subject: 'Please Complete Your Information',
-      status: 'sent',
-      template: 'Customer Information Form'
-    },
-    {
-      id: '2',
-      timestamp: new Date(Date.now() - 300000).toISOString(),
-      to: 'lead@company.com',
-      subject: 'Your Quote Request - Next Steps',
-      status: 'sent',
-      template: 'Quote Request Follow-up'
-    },
-    {
-      id: '3',
-      timestamp: new Date(Date.now() - 600000).toISOString(),
-      to: 'invalid@email',
-      subject: 'Welcome! Complete Your Service Registration',
-      status: 'failed',
-      template: 'New Service Sign Up',
-      errorMessage: 'Invalid email address format'
+  // Get email logs from localStorage
+  const getEmailLogs = (): EmailLog[] => {
+    try {
+      return JSON.parse(localStorage.getItem('email_send_logs') || '[]');
+    } catch {
+      return [];
     }
-  ]);
+  };
+
+  const [emailLogs] = useState<EmailLog[]>(getEmailLogs());
 
   const handleTestConnection = async () => {
     try {
-      const success = await onTestConnection();
-      if (success) {
+      const response = await fetch('/api/test-smtp', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          host: config.host,
+          port: config.port,
+          username: config.username,
+          password: config.password,
+          encryption: config.encryption,
+          fromEmail: config.fromEmail,
+          fromName: config.fromName
+        })
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
         toast({
           title: "SMTP Connected",
-          description: "Successfully connected to SMTP server.",
+          description: "Successfully connected to SMTP server and saved configuration.",
         });
+        return true;
+      } else {
+        throw new Error(result.message || 'Connection failed');
       }
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       toast({
         title: "Connection Failed",
-        description: "Could not connect to SMTP server. Check your configuration.",
+        description: `Could not connect to SMTP server: ${errorMessage}`,
         variant: "destructive"
       });
+      return false;
     }
   };
 
@@ -283,7 +287,7 @@ const SMTPConfigCard = ({
               <div className="space-y-2 max-h-64 overflow-y-auto">
                 {emailLogs.length === 0 ? (
                   <div className="text-center py-4 text-gray-500 text-sm">
-                    No emails sent yet. Email logs will appear here when templates are sent.
+                    No emails sent yet. Email logs will appear here when emails are sent.
                   </div>
                 ) : (
                   emailLogs.map((log) => (
@@ -316,7 +320,7 @@ const SMTPConfigCard = ({
               </div>
               
               <div className="text-xs text-gray-500 text-center">
-                Showing last 10 email sending attempts. Logs are refreshed in real-time.
+                Real-time email sending logs from your Ubuntu server.
               </div>
             </div>
           </>

@@ -361,20 +361,44 @@ const IntegrationSettings = () => {
     addLogEntry('info', `Testing SMTP connection to ${config.smtp.host}:${config.smtp.port}`);
     
     try {
-      // Mock test - in real implementation, this would test SMTP connection
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      const response = await fetch('/api/test-smtp', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          host: config.smtp.host,
+          port: config.smtp.port,
+          username: config.smtp.username,
+          password: config.smtp.password,
+          encryption: config.smtp.encryption,
+          fromEmail: config.smtp.fromEmail,
+          fromName: config.smtp.fromName
+        })
+      });
+
+      const result = await response.json();
       
-      if (config.smtp.host && config.smtp.username) {
+      if (result.success) {
         setConnectionStatus(prev => ({ ...prev, smtp: 'connected' }));
         addLogEntry('success', 'SMTP connection successful');
+        toast({
+          title: "SMTP Connected",
+          description: "Successfully connected to SMTP server and saved configuration.",
+        });
         return true;
       } else {
-        throw new Error('Missing SMTP host or username');
+        throw new Error(result.message || 'Connection failed');
       }
     } catch (error) {
       setConnectionStatus(prev => ({ ...prev, smtp: 'disconnected' }));
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       addLogEntry('error', 'SMTP connection failed', errorMessage);
+      toast({
+        title: "SMTP Connection Failed",
+        description: `Could not connect to SMTP server: ${errorMessage}`,
+        variant: "destructive"
+      });
       return false;
     }
   };
