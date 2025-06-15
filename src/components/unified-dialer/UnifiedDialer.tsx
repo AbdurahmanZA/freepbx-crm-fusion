@@ -268,12 +268,12 @@ const UnifiedDialer = ({ onCallInitiated, disabled, initialData }: UnifiedDialer
   };
 
   return (
-    <Card className="h-fit shadow-sm border flex flex-col w-full">
-      <CardHeader className="pb-1 px-3 pt-2">
+    <div className="h-fit shadow-sm border flex flex-col w-full bg-card text-card-foreground rounded-lg">
+      <div className="pb-1 px-3 pt-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Phone className="h-4 w-4 text-primary" />
-            <CardTitle className="text-sm font-medium">Unified Dialer</CardTitle>
+            <h3 className="text-sm font-medium">Unified Dialer</h3>
           </div>
           <div className="flex items-center gap-1">
             <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
@@ -282,9 +282,9 @@ const UnifiedDialer = ({ onCallInitiated, disabled, initialData }: UnifiedDialer
             </span>
           </div>
         </div>
-      </CardHeader>
+      </div>
 
-      <CardContent className="space-y-2 px-3 py-2 !pt-0">
+      <div className="space-y-2 px-3 py-2 !pt-0">
         {/* Agent Info - Compact */}
         <div className="flex items-center gap-2 text-xs">
           <User className="h-3 w-3 text-muted-foreground" />
@@ -325,7 +325,6 @@ const UnifiedDialer = ({ onCallInitiated, disabled, initialData }: UnifiedDialer
             value={phoneNumber}
             onChange={e => {
               setPhoneNumber(e.target.value);
-              // Auto-populate from leads when phone changes
               if (e.target.value.length > 7) {
                 populateContactFromLeads(e.target.value);
               }
@@ -356,8 +355,8 @@ const UnifiedDialer = ({ onCallInitiated, disabled, initialData }: UnifiedDialer
             Connect AMI in Integration Settings
           </p>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 };
 

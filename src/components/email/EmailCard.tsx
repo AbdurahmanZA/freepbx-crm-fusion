@@ -1,6 +1,5 @@
 
 import React from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Mail } from "lucide-react";
 import SimpleEmailPanel from "@/components/unified-dialer/SimpleEmailPanel";
 
@@ -26,14 +25,14 @@ const EmailCard: React.FC<EmailCardProps> = ({
   }, [initialContactEmail]);
 
   return (
-    <Card className="w-full max-w-2xl mx-auto">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-lg flex items-center gap-2">
+    <div className="w-full">
+      <div className="pb-3">
+        <h3 className="text-lg flex items-center gap-2 font-semibold">
           <Mail className="h-5 w-5 text-blue-600" />
           Email Center
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
+        </h3>
+      </div>
+      <div>
         <SimpleEmailPanel
           contactEmail={contactEmail}
           setContactEmail={setContactEmail}
@@ -41,8 +40,8 @@ const EmailCard: React.FC<EmailCardProps> = ({
           phoneNumber={initialPhoneNumber}
           leadId={initialLeadId}
         />
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 };
 
