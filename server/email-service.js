@@ -11,7 +11,12 @@ app.use(cors());
 
 const configPath = path.join(__dirname, 'config.json');
 
-// Get SMTP configuration from config.json or environment
+// Initialize config file if it doesn't exist
+if (!fs.existsSync(configPath)) {
+  fs.writeFileSync(configPath, JSON.stringify({}, null, 2));
+}
+
+// Get SMTP configuration from config.json
 function getSMTPConfig() {
   try {
     const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
@@ -25,7 +30,10 @@ function getSMTPConfig() {
 // Save SMTP configuration to config.json
 function saveSMTPConfig(smtpConfig) {
   try {
-    const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    let config = {};
+    if (fs.existsSync(configPath)) {
+      config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    }
     config.smtp = smtpConfig;
     fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
     return true;
@@ -49,7 +57,7 @@ app.post('/api/test-smtp', async (req, res) => {
         pass: password
       },
       tls: {
-        rejectUnauthorized: false // Allow self-signed certificates
+        rejectUnauthorized: false
       }
     });
 
