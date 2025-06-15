@@ -1,831 +1,712 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Users, 
-  Plus, 
-  Search, 
-  Phone, 
-  Mail, 
-  Building,
-  Upload,
-  Filter,
-  PhoneCall,
-  MessageSquare,
-  Calendar,
-  AlertCircle,
-  Edit,
-  Save,
-  X,
-  Send
-} from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { useAMIContext } from "@/contexts/AMIContext";
 import { useAuth } from "@/contexts/AuthContext";
-import LeadEmailTemplateDialog from "@/components/lead-management/LeadEmailTemplateDialog";
-import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerClose } from "@/components/ui/drawer";
-import EmailTimeline from "@/components/email-history/EmailTimeline";
-import { emailLogService } from "@/services/emailLogService";
-
-interface LeadManagementProps {
-  userRole: string;
-}
+import { simpleEmailService } from "@/services/simpleEmailService";
+import {
+  Users,
+  Plus,
+  Search,
+  Edit,
+  Trash2,
+  Phone,
+  Mail,
+  Calendar,
+  MapPin,
+  DollarSign,
+  Filter,
+  Download,
+  Upload,
+  MoreHorizontal,
+  User,
+  Building,
+  Tag,
+  Clock,
+  Star,
+  StarOff,
+  FileText,
+  Send,
+  Eye,
+  X,
+  AlertCircle
+} from "lucide-react";
 
 interface Lead {
-  id: number;
+  id: string;
   name: string;
-  company: string;
   phone: string;
   email: string;
-  status: string;
-  priority: string;
+  address: string;
+  city: string;
+  state: string;
+  zip: string;
   source: string;
-  assignedAgent: string;
-  lastContact: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+  agentId: string;
+  company: string;
+  title: string;
+  industry: string;
   notes: string;
+  priority: string;
+  lastContacted: string;
+  estimatedValue: number;
+  tags: string[];
 }
 
-const LeadManagement = ({ userRole }: LeadManagementProps) => {
+interface EmailTemplate {
+  id: string;
+  name: string;
+  subject: string;
+  body: string;
+  type: string;
+}
+
+const initialLead: Lead = {
+  id: "",
+  name: "",
+  phone: "",
+  email: "",
+  address: "",
+  city: "",
+  state: "",
+  zip: "",
+  source: "",
+  status: "",
+  createdAt: "",
+  updatedAt: "",
+  agentId: "",
+  company: "",
+  title: "",
+  industry: "",
+  notes: "",
+  priority: "",
+  lastContacted: "",
+  estimatedValue: 0,
+  tags: [],
+};
+
+const LeadManagement = () => {
   const { toast } = useToast();
-  const { isConnected } = useAMIContext();
   const { user } = useAuth();
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedLeads, setSelectedLeads] = useState<number[]>([]);
-  const [editingLead, setEditingLead] = useState<number | null>(null);
-  const [editForm, setEditForm] = useState<Partial<Lead>>({});
-  const [leads, setLeads] = useState<Lead[]>(() => {
-    // Load leads from localStorage if available
-    const savedLeads = localStorage.getItem('leads');
-    if (savedLeads) {
-      try {
-        return JSON.parse(savedLeads);
-      } catch {
-        // If parsing fails, fall back to default leads
-      }
-    }
-    
-    // Default leads if none in localStorage
-    return [
-      {
-        id: 1,
-        name: "John Smith",
-        company: "Acme Corp",
-        phone: "+1-555-0123",
-        email: "john@acme.com",
-        status: "new",
-        priority: "high",
-        source: "Website",
-        assignedAgent: "Sarah Wilson",
-        lastContact: "Never",
-        notes: "Interested in enterprise solution"
-      },
-      {
-        id: 2,
-        name: "Sarah Johnson",
-        company: "Tech Solutions",
-        phone: "+1-555-0456",
-        email: "sarah@techsol.com",
-        status: "contacted",
-        priority: "medium",
-        source: "Referral",
-        assignedAgent: "Mike Davis",
-        lastContact: "2024-06-09",
-        notes: "Requested callback for pricing"
-      },
-      {
-        id: 3,
-        name: "Mike Davis",
-        company: "Global Systems",
-        phone: "+1-555-0789",
-        email: "mike@global.com",
-        status: "qualified",
-        priority: "high",
-        source: "Cold Call",
-        assignedAgent: "Sarah Wilson",
-        lastContact: "2024-06-08",
-        notes: "Ready to move forward, send proposal"
-      },
-      {
-        id: 4,
-        name: "Emily Brown",
-        company: "Innovation Labs",
-        phone: "+1-555-0321",
-        email: "emily@innovlabs.com",
-        status: "new",
-        priority: "medium",
-        source: "LinkedIn",
-        assignedAgent: "John Doe",
-        lastContact: "Never",
-        notes: "Inquiry about custom development"
-      },
-      {
-        id: 5,
-        name: "Robert Wilson",
-        company: "Digital Agency",
-        phone: "+1-555-0654",
-        email: "robert@digitalagency.com",
-        status: "follow-up",
-        priority: "low",
-        source: "Trade Show",
-        assignedAgent: "Sarah Wilson",
-        lastContact: "2024-06-10",
-        notes: "Needs budget approval from management"
-      }
-    ];
-  });
 
-  // Save leads to localStorage whenever leads state changes
-  useEffect(() => {
-    console.log('📧 [LeadManagement] Saving leads to localStorage:', leads.length);
-    localStorage.setItem('leads', JSON.stringify(leads));
-  }, [leads]);
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [currentLead, setCurrentLead] = useState<Lead>(initialLead);
+  const [isEditing, setIsEditing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortColumn, setSortColumn] = useState("createdAt");
+  const [sortDirection, setSortDirection] = useState("desc");
+  const [showEmailDialog, setShowEmailDialog] = useState(false);
+  const [selectedEmailTemplate, setSelectedEmailTemplate] = useState<string | null>(null);
+  const [emailTemplates, setEmailTemplates] = useState<EmailTemplate[]>([]);
+  const [isEmailLoading, setIsEmailLoading] = useState(false);
 
-  // Listen for new leads created from manual calls
   useEffect(() => {
-    const handleNewLead = (event: CustomEvent) => {
-      const newLead = event.detail;
-      const leadEntry: Lead = {
-        id: Math.max(...leads.map(l => l.id), 0) + 1,
-        name: newLead.name || 'Unknown Contact',
-        company: 'Unknown Company',
-        phone: newLead.phone,
-        email: 'unknown@email.com',
-        status: 'contacted',
-        priority: 'medium',
-        source: 'Manual Call',
-        assignedAgent: 'Current User',
-        lastContact: new Date().toISOString().split('T')[0],
-        notes: newLead.notes || 'Lead created from manual call'
-      };
-      
-      setLeads(prev => [leadEntry, ...prev]);
+    fetchLeads();
+    fetchEmailTemplates();
+  }, []);
+
+  const fetchLeads = () => {
+    try {
+      const storedLeads = localStorage.getItem("leads");
+      if (storedLeads) {
+        setLeads(JSON.parse(storedLeads));
+      }
+    } catch (error) {
+      console.error("Error fetching leads from localStorage:", error);
       toast({
-        title: "New Lead Added",
-        description: `Lead ${leadEntry.name} created from manual call`,
+        title: "Error Fetching Leads",
+        description: "Failed to retrieve leads from local storage.",
+        variant: "destructive",
       });
-    };
+    }
+  };
 
-    window.addEventListener('newLeadCreated', handleNewLead as EventListener);
-    return () => window.removeEventListener('newLeadCreated', handleNewLead as EventListener);
-  }, [leads, toast]);
+  const fetchEmailTemplates = () => {
+    try {
+      const templates = simpleEmailService.getTemplates();
+      setEmailTemplates(templates);
+    } catch (error) {
+      console.error("Error fetching email templates:", error);
+      toast({
+        title: "Error Fetching Templates",
+        description: "Failed to retrieve email templates.",
+        variant: "destructive",
+      });
+    }
+  };
 
-  const handleClickToDial = async (phone: string, leadName: string, leadId: number) => {
-    if (!user?.extension || !phone) {
+  const saveLeads = (newLeads: Lead[]) => {
+    try {
+      localStorage.setItem("leads", JSON.stringify(newLeads));
+      setLeads(newLeads);
+    } catch (error) {
+      console.error("Error saving leads to localStorage:", error);
+      toast({
+        title: "Error Saving Leads",
+        description: "Failed to save leads to local storage.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setCurrentLead((prevLead) => ({
+      ...prevLead,
+      [name]: value,
+    }));
+  };
+
+  const handleSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setCurrentLead((prevLead) => ({
+      ...prevLead,
+      [name]: value,
+    }));
+  };
+
+  const addLead = () => {
+    setIsEditing(false);
+    setCurrentLead(initialLead);
+    // Open a dialog or form for adding a new lead
+  };
+
+  const editLead = (lead: Lead) => {
+    setIsEditing(true);
+    setCurrentLead(lead);
+    // Open a dialog or form for editing the lead
+  };
+
+  const saveLead = () => {
+    if (!currentLead.name || !currentLead.phone || !currentLead.email) {
       toast({
         title: "Missing Information",
-        description: !user?.extension 
-          ? "No extension assigned to your user account. Contact administrator."
-          : "Phone number is missing for this lead.",
-        variant: "destructive"
+        description: "Please fill in all required fields.",
+        variant: "destructive",
       });
       return;
     }
 
-    if (!isConnected) {
-      toast({
-        title: "AMI Not Connected",
-        description: "Please connect to FreePBX AMI in Integration Settings first.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    try {
-      console.log('📞 [LeadManagement] Initiating call via UnifiedDialer:', {
-        leadName,
-        phone,
-        leadId,
-        userExtension: user.extension
-      });
-
-      // Update lead status immediately
-      setLeads(prevLeads => 
-        prevLeads.map(lead => 
-          lead.id === leadId 
-            ? { ...lead, status: 'contacted', lastContact: new Date().toISOString().split('T')[0] }
-            : lead
-        )
+    if (isEditing) {
+      // Update existing lead
+      const updatedLeads = leads.map((lead) =>
+        lead.id === currentLead.id ? currentLead : lead
       );
-
-      // Get full lead data for the dialer
-      const fullLead = leads.find(l => l.id === leadId);
-      
-      // Dispatch comprehensive event to UnifiedDialer
-      const callEvent = new CustomEvent('unifiedDialerCall', { 
-        detail: {
-          phoneNumber: phone,
-          contactName: leadName,
-          contactEmail: fullLead?.email || '',
-          leadId: leadId.toString(),
-          source: 'LeadManagement',
-          autoOpenDrawer: true, // Signal to auto-open the drawer
-          leadData: fullLead // Pass full lead data
-        }
-      });
-      
-      console.log('📞 [LeadManagement] Dispatching call event:', callEvent.detail);
-      window.dispatchEvent(callEvent);
-
+      saveLeads(updatedLeads);
       toast({
-        title: "Call Request Sent",
-        description: `Opening dialer for ${leadName}...`,
+        title: "Lead Updated",
+        description: `${currentLead.name} has been updated successfully.`,
       });
-
-      // Send Discord notification
-      if ((window as any).sendDiscordNotification) {
-        (window as any).sendDiscordNotification(
-          leadName, 
-          'called', 
-          `Call initiated to ${phone} from Lead Management`
-        );
-      }
-
-    } catch (error) {
-      console.error('❌ [LeadManagement] Call initiation error:', error);
+    } else {
+      // Add new lead
+      const newLead = { ...currentLead, id: `lead_${Date.now()}` };
+      saveLeads([...leads, newLead]);
       toast({
-        title: "Call Failed",
-        description: "Could not initiate call through UnifiedDialer.",
-        variant: "destructive"
+        title: "Lead Added",
+        description: `${currentLead.name} has been added successfully.`,
       });
     }
+    setCurrentLead(initialLead);
+    setIsEditing(false);
   };
 
-  const handleToggleQualified = (leadId: number) => {
-    const lead = leads.find(l => l.id === leadId);
-    if (!lead) return;
-
-    const newStatus = lead.status === 'qualified' ? 'new' : 'qualified';
-    
-    setLeads(prevLeads =>
-      prevLeads.map(lead =>
-        lead.id === leadId ? { ...lead, status: newStatus } : lead
-      )
-    );
-    
-    toast({
-      title: "Lead Updated",
-      description: `Lead status updated to ${newStatus}`,
-    });
-
-    // Send Discord notification
-    if ((window as any).sendDiscordNotification) {
-      (window as any).sendDiscordNotification(
-        lead.name, 
-        'updated', 
-        `Status changed to ${newStatus}`
-      );
-    }
-  };
-
-  const handleEditLead = (lead: Lead) => {
-    setEditingLead(lead.id);
-    setEditForm(lead);
-  };
-
-  const handleSaveEdit = () => {
-    if (!editingLead || !editForm) return;
-
-    console.log('📧 [LeadManagement] Saving lead edit:', editForm);
-
-    setLeads(prevLeads =>
-      prevLeads.map(lead =>
-        lead.id === editingLead ? { ...lead, ...editForm } : lead
-      )
-    );
-
-    setEditingLead(null);
-    setEditForm({});
-    
-    toast({
-      title: "Lead Updated",
-      description: "Lead information has been saved successfully.",
-    });
-  };
-
-  const handleCancelEdit = () => {
-    setEditingLead(null);
-    setEditForm({});
-  };
-
-  const handleBulkAssign = () => {
-    if (selectedLeads.length === 0) {
-      toast({
-        title: "No Leads Selected",
-        description: "Please select leads to assign.",
-        variant: "destructive"
-      });
-      return;
-    }
-    toast({
-      title: "Leads Assigned",
-      description: `${selectedLeads.length} leads assigned successfully.`,
-    });
-    setSelectedLeads([]);
-  };
-
-  const addNewLead = () => {
-    const newLead: Lead = {
-      id: Math.max(...leads.map(l => l.id)) + 1,
-      name: "New Lead",
-      company: "Company Name",
-      phone: "+1-555-0000",
-      email: "new@lead.com",
-      status: "new",
-      priority: "medium",
-      source: "Manual Entry",
-      assignedAgent: "Current User",
-      lastContact: "Never",
-      notes: "New lead - needs qualification"
-    };
-
-    setLeads(prev => [newLead, ...prev]);
-    toast({
-      title: "New Lead Added",
-      description: "Lead added successfully. You can edit the details.",
-    });
-  };
-
-  const canEditLeads = userRole === "Manager" || userRole === "Administrator";
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "new": return "bg-blue-100 text-blue-800";
-      case "contacted": return "bg-yellow-100 text-yellow-800";
-      case "qualified": return "bg-green-100 text-green-800";
-      case "follow-up": return "bg-orange-100 text-orange-800";
-      case "converted": return "bg-purple-100 text-purple-800";
-      default: return "bg-gray-100 text-gray-800";
-    }
-  };
-
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case "high": return "text-red-600";
-      case "medium": return "text-yellow-600";
-      case "low": return "text-green-600";
-      default: return "text-gray-600";
-    }
-  };
-
-  const downloadLeadsTemplate = () => {
-    const template = [
-      {
-        name: "John Smith",
-        company: "Example Corp",
-        phone: "+1-555-0123",
-        email: "john@example.com",
-        status: "new",
-        priority: "high",
-        source: "Website",
-        assignedAgent: "Agent Name",
-        notes: "Sample lead entry"
-      }
-    ];
-
-    const csvContent = [
-      "name,company,phone,email,status,priority,source,assignedAgent,notes",
-      template.map(lead => 
-        `"${lead.name}","${lead.company}","${lead.phone}","${lead.email}","${lead.status}","${lead.priority}","${lead.source}","${lead.assignedAgent}","${lead.notes}"`
-      ).join('\n')
-    ].join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'leads_template.csv';
-    a.click();
-    window.URL.revokeObjectURL(url);
-
-    toast({
-      title: "Template Downloaded",
-      description: "Leads import template has been downloaded successfully.",
-    });
-  };
-
-  // Template dialog state for selected lead
-  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
-  const [dialogLeadId, setDialogLeadId] = useState<number | null>(null);
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
-  const [sendingEmail, setSendingEmail] = useState(false);
-
-  // Fetch templates from localStorage, fallback to default ones
-  const getTemplates = () => {
-    const stored = localStorage.getItem("email_templates");
-    if (stored) return JSON.parse(stored);
-    // fallback to default ones from EmailTemplateCard
-    return [
-      {
-        id: '1', name: 'Customer Information Form', subject: 'Please Complete Your Information', body: '', type: 'form-link'
-      }, {
-        id: '2', name: 'Quote Request Follow-up', subject: 'Your Quote Request - Next Steps', body: '', type: 'quote-request'
-      },
-      { id: '3', name: 'New Service Sign Up', subject: 'Welcome! Complete Your Service Registration', body: '', type: 'service-signup' },
-      { id: '4', name: 'Details Update Form', subject: 'Please Update Your Account Information', body: '', type: 'details-update' },
-      { id: '5', name: 'Latest Invoice and Statement Balance', subject: 'Your Latest Invoice and Account Statement', body: '', type: 'invoice-statement' }
-    ];
-  };
-
-  // OPEN DIALOG - called when user clicks "Email Form"
-  const handleEmailFormClick = (lead: Lead) => {
-    console.log('📧 [LeadManagement] Opening email dialog for lead:', lead);
-    setDialogLeadId(lead.id);
-    setSelectedTemplateId(null);
-    setEmailDialogOpen(true);
-  };
-
-  // SEND EMAIL using chosen template
-  const handleTemplateSend = async () => {
-    if (!dialogLeadId || !selectedTemplateId) return;
-
-    // Get the CURRENT lead data (which includes any edits made)
-    const currentLead = leads.find(l => l.id === dialogLeadId);
-    if (!currentLead) {
+  const deleteLead = (leadId: string) => {
+    const leadToDelete = leads.find(lead => lead.id === leadId);
+    if (!leadToDelete) {
       toast({
         title: "Lead Not Found",
-        description: "The selected lead could not be found. It may have been deleted.",
-        variant: "destructive"
+        description: "The lead you are trying to delete does not exist.",
+        variant: "destructive",
       });
-      setEmailDialogOpen(false);
-      setDialogLeadId(null);
       return;
     }
 
-    console.log('📧 [LeadManagement] Sending email to current lead data:', currentLead);
-
-    setSendingEmail(true);
-
-    // Get template details
-    const allTemplates = getTemplates();
-    const template = allTemplates.find((t: any) => t.id === selectedTemplateId) || allTemplates[0];
-
-    // Get SMTP config from localStorage
-    const smtpEnabled = localStorage.getItem('smtp_enabled') === 'true';
-    const smtpHost = localStorage.getItem('smtp_host');
-    const smtpUsername = localStorage.getItem('smtp_username');
-
-    if (!smtpEnabled || !smtpHost || !smtpUsername) {
+    const confirmDelete = window.confirm(`Are you sure you want to delete ${leadToDelete.name}?`);
+    if (confirmDelete) {
+      const updatedLeads = leads.filter((lead) => lead.id !== leadId);
+      saveLeads(updatedLeads);
       toast({
-        title: "SMTP Not Configured",
-        description: "Please configure SMTP settings in Integration Settings first.",
-        variant: "destructive"
+        title: "Lead Deleted",
+        description: `${leadToDelete.name} has been deleted successfully.`,
       });
-      setSendingEmail(false);
-      return;
-    }
-
-    try {
-      const companyName = localStorage.getItem('smtp_from_name') || 'Your Company';
-      const formLink = `${window.location.origin}/customer-form?lead=${currentLead.id}`;
-
-      // Use the CURRENT lead data (not the original dialogLead)
-      const actualLeadName = currentLead.name;
-      const actualLeadEmail = currentLead.email;
-      const actualLeadPhone = currentLead.phone;
-
-      console.log('📧 [LeadManagement] Sending to actual email:', actualLeadEmail);
-
-      // These substitutions ensure we use the latest, user-edited info
-      const subject = template.subject
-        .replace('{{customerName}}', actualLeadName)
-        .replace('{{companyName}}', companyName);
-
-      const body = (template.body || "")
-        .replace('{{customerName}}', actualLeadName)
-        .replace('{{formLink}}', formLink)
-        .replace('{{companyName}}', companyName)
-        .replace('{{phone}}', actualLeadPhone)
-        .replace('{{email}}', actualLeadEmail);
-
-      // Log the email with the ACTUAL recipient email
-      emailLogService.logEmail({
-        to: actualLeadEmail, // Use the current lead's email
-        from: user?.email || "Unknown",
-        subject: subject,
-        body: body,
-        templateName: template.name,
-        agent: user?.name || "Unknown",
-        leadId: String(currentLead.id),
-        leadName: actualLeadName,
-        phone: actualLeadPhone,
-        extra: {
-          leadManagement: true,
-          templateId: selectedTemplateId,
-          actualRecipient: actualLeadEmail
-        }
-      });
-
-      // Simulate send (if you call an actual API here, be sure to pass actualLeadEmail)
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      setLeads(prevLeads =>
-        prevLeads.map(l =>
-          l.id === currentLead.id
-            ? { ...l, status: 'contacted', lastContact: new Date().toISOString().split('T')[0] }
-            : l
-        )
-      );
-
-      toast({
-        title: "Email Sent",
-        description: `Email sent to ${actualLeadName} (${actualLeadEmail})`,
-      });
-
-      // Send Discord notification (also with correct email/name)
-      if ((window as any).sendDiscordNotification) {
-        (window as any).sendDiscordNotification(
-          actualLeadName,
-          'emailed',
-          `Sent ${template.name} to ${actualLeadEmail}`
-        );
-      }
-
-      setEmailDialogOpen(false);
-    } catch (error) {
-      console.error('📧 [LeadManagement] Email send error:', error);
-      toast({
-        title: "Email Failed",
-        description: "Could not send email. Please check your SMTP configuration.",
-        variant: "destructive"
-      });
-    } finally {
-      setSendingEmail(false);
-      setDialogLeadId(null);
     }
   };
 
-  const filteredLeads = leads.filter(lead =>
-    lead.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    lead.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    lead.phone.includes(searchTerm)
-  );
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+  };
 
-  // Drawer state for history view
-  const [historyDrawerOpen, setHistoryDrawerOpen] = useState(false);
-  const [historyLead, setHistoryLead] = useState<Lead | null>(null);
-
-  // Email log for history drawer
-  const [historyEmailLogs, setHistoryEmailLogs] = useState([]);
-  useEffect(() => {
-    if (historyLead) {
-      // Try by leadId (string)
-      const logs = emailLogService.getByLeadId(String(historyLead.id));
-      setHistoryEmailLogs(logs);
+  const sortLeads = (column: string) => {
+    if (column === sortColumn) {
+      // Reverse the sorting direction
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      // Set new sorting column and default direction
+      setSortColumn(column);
+      setSortDirection("asc");
     }
-  }, [historyLead, historyDrawerOpen]);
-  
+  };
+
+  const sortedLeads = React.useMemo(() => {
+    const sortableLeads = [...leads];
+    sortableLeads.sort((a, b) => {
+      const columnA = a[sortColumn as keyof Lead];
+      const columnB = b[sortColumn as keyof Lead];
+
+      if (columnA < columnB) {
+        return sortDirection === "asc" ? -1 : 1;
+      }
+      if (columnA > columnB) {
+        return sortDirection === "asc" ? 1 : -1;
+      }
+      return 0;
+    });
+    return sortableLeads;
+  }, [leads, sortColumn, sortDirection]);
+
+  const filteredLeads = React.useMemo(() => {
+    const lowerCaseQuery = searchQuery.toLowerCase();
+    return sortedLeads.filter((lead) => {
+      return (
+        lead.name.toLowerCase().includes(lowerCaseQuery) ||
+        lead.email.toLowerCase().includes(lowerCaseQuery) ||
+        lead.phone.toLowerCase().includes(lowerCaseQuery) ||
+        lead.company.toLowerCase().includes(lowerCaseQuery)
+      );
+    });
+  }, [searchQuery, sortedLeads]);
+
+  const openEmailDialog = (leadId: string) => {
+    const lead = leads.find(l => l.id === leadId);
+    if (lead) {
+      setCurrentLead(lead);
+      setShowEmailDialog(true);
+    } else {
+      toast({
+        title: "Lead Not Found",
+        description: "Could not find the lead to send email.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const closeEmailDialog = () => {
+    setShowEmailDialog(false);
+    setSelectedEmailTemplate(null);
+  };
+
+  const handleEmailTemplateSelect = (templateId: string) => {
+    setSelectedEmailTemplate(templateId);
+  };
+
+  const sendEmailToLead = async (leadId: string, templateId: string) => {
+    console.log('📧 [LeadManagement] Sending email to current lead data:', currentLead);
+    
+    if (!currentLead?.email) {
+      toast({
+        title: "No Email Address",
+        description: "This lead doesn't have an email address.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    console.log('📧 [LeadManagement] Sending to actual email:', currentLead.email);
+
+    try {
+      const templates = simpleEmailService.getTemplates();
+      const template = templates.find(t => t.id === templateId);
+      
+      if (!template) {
+        toast({
+          title: "Template Not Found",
+          description: "Selected email template could not be found.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      const emailData = simpleEmailService.prepareEmail(templateId, currentLead.email, {
+        customerName: currentLead.name
+      });
+
+      if (!emailData) {
+        toast({
+          title: "Email Preparation Failed",
+          description: "Could not prepare email from template.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Get the current server URL for email service
+      const getEmailServiceUrl = () => {
+        const hostname = window.location.hostname;
+        return `http://${hostname}:3002/api/send-email`;
+      };
+
+      const emailPayload = {
+        to: emailData.to,
+        subject: emailData.subject,
+        body: emailData.body,
+        fromEmail: user?.email,
+        fromName: user?.name
+      };
+
+      const response = await fetch(getEmailServiceUrl(), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(emailPayload)
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        // Log the email using simpleEmailService
+        simpleEmailService.logEmail({
+          to: currentLead.email,
+          from: user?.email || "Unknown",
+          subject: emailData.subject,
+          body: emailData.body,
+          templateName: template.name,
+          agent: user?.name || "Unknown",
+          leadId: currentLead.id,
+          leadName: currentLead.name,
+          phone: currentLead.phone
+        });
+
+        toast({
+          title: "Email Sent Successfully",
+          description: `Email sent to ${currentLead.name} at ${currentLead.email}`,
+        });
+
+        setShowEmailDialog(false);
+        setSelectedEmailTemplate(null);
+      } else {
+        throw new Error(result.message || 'Failed to send email');
+      }
+    } catch (error) {
+      console.error('📧 [LeadManagement] Email send error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      
+      toast({
+        title: "Email Send Failed",
+        description: `Could not send email: ${errorMessage}`,
+        variant: "destructive"
+      });
+    }
+  };
+
   return (
-    <div className="space-y-6">
+    <div>
       <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5" />
-              Lead Management
-              <Badge variant="outline">{filteredLeads.length} leads</Badge>
-            </CardTitle>
-            <div className="flex gap-2">
-              <Button onClick={addNewLead} className="flex items-center gap-2">
-                <Plus className="h-4 w-4" />
-                Add Lead
-              </Button>
-              {(userRole === "manager" || userRole === "administrator") && (
-                <>
-                  <Button variant="outline" className="flex items-center gap-2">
-                    <Upload className="h-4 w-4" />
-                    Import
-                  </Button>
-                  <Button variant="outline" onClick={handleBulkAssign} className="flex items-center gap-2">
-                    <Users className="h-4 w-4" />
-                    Bulk Assign
-                  </Button>
-                </>
-              )}
-            </div>
+        <CardHeader className="flex items-center justify-between">
+          <CardTitle>Lead Management</CardTitle>
+          <div className="flex items-center space-x-2">
+            <Button variant="outline" size="sm" onClick={addLead}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Lead
+            </Button>
+            <Input
+              type="search"
+              placeholder="Search leads..."
+              value={searchQuery}
+              onChange={handleSearch}
+              className="max-w-xs"
+            />
           </div>
         </CardHeader>
         <CardContent>
-          <div className="mb-6 flex gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search leads by name, company, or phone..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            <Button variant="outline" className="flex items-center gap-2">
-              <Filter className="h-4 w-4" />
-              Filters
-            </Button>
-          </div>
-
-          <div className="space-y-4">
-            {filteredLeads.map((lead) => (
-              <Card key={lead.id} className="hover:shadow-md transition-shadow border-l-4 border-l-blue-500">
-                <CardContent className="p-4">
-                  {editingLead === lead.id ? (
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <Input
-                          value={editForm.name || ''}
-                          onChange={(e) => setEditForm(prev => ({...prev, name: e.target.value}))}
-                          placeholder="Name"
-                        />
-                        <Input
-                          value={editForm.company || ''}
-                          onChange={(e) => setEditForm(prev => ({...prev, company: e.target.value}))}
-                          placeholder="Company"
-                        />
-                        <Input
-                          value={editForm.phone || ''}
-                          onChange={(e) => setEditForm(prev => ({...prev, phone: e.target.value}))}
-                          placeholder="Phone"
-                        />
-                        <Input
-                          value={editForm.email || ''}
-                          onChange={(e) => setEditForm(prev => ({...prev, email: e.target.value}))}
-                          placeholder="Email"
-                        />
-                      </div>
-                      <textarea
-                        value={editForm.notes || ''}
-                        onChange={(e) => setEditForm(prev => ({...prev, notes: e.target.value}))}
-                        placeholder="Notes"
-                        className="w-full p-2 border rounded"
-                        rows={3}
-                      />
-                      <div className="flex gap-2">
-                        <Button onClick={handleSaveEdit} size="sm">
-                          <Save className="h-3 w-3 mr-1" />
-                          Save
-                        </Button>
-                        <Button onClick={handleCancelEdit} variant="outline" size="sm">
-                          <X className="h-3 w-3 mr-1" />
-                          Cancel
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        {(userRole === "manager" || userRole === "administrator") && (
-                          <input
-                            type="checkbox"
-                            checked={selectedLeads.includes(lead.id)}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setSelectedLeads([...selectedLeads, lead.id]);
-                              } else {
-                                setSelectedLeads(selectedLeads.filter(id => id !== lead.id));
-                              }
-                            }}
-                            className="w-4 h-4"
-                          />
-                        )}
-                        <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                          <Users className="h-6 w-6 text-blue-600" />
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h3 className="font-semibold text-lg">{lead.name}</h3>
-                            <Badge className={`text-xs ${getStatusColor(lead.status)}`}>
-                              {lead.status}
-                            </Badge>
-                            <AlertCircle className={`h-4 w-4 ${getPriorityColor(lead.priority)}`} />
-                          </div>
-                          <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                            <span className="flex items-center gap-1">
-                              <Building className="h-3 w-3" />
-                              {lead.company}
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <Phone className="h-3 w-3" />
-                              {lead.phone}
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <Mail className="h-3 w-3" />
-                              {lead.email}
-                            </span>
-                          </div>
-                          <div className="mt-2 text-sm">
-                            <span className="text-gray-600">Assigned to: </span>
-                            <span className="font-medium">{lead.assignedAgent}</span>
-                            <span className="text-gray-600 ml-4">Last Contact: </span>
-                            <span className="font-medium">{lead.lastContact}</span>
-                          </div>
-                          <p className="text-sm text-gray-600 mt-1">{lead.notes}</p>
-                        </div>
-                      </div>
-                      <div className="flex flex-col gap-2">
-                        <div className="flex gap-2">
-                          <Button 
-                            size="sm" 
-                            onClick={() => handleClickToDial(lead.phone, lead.name, lead.id)}
-                            disabled={!user?.extension || !isConnected}
-                            className="bg-green-600 hover:bg-green-700 flex items-center gap-1"
-                          >
-                            <PhoneCall className="h-3 w-3" />
-                            Call
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            onClick={() => handleEmailFormClick(lead)}
-                            className="bg-blue-600 hover:bg-blue-700 flex items-center gap-1"
-                          >
-                            <Send className="h-3 w-3" />
-                            Email Form
-                          </Button>
-                        </div>
-                        <div className="flex gap-2">
-                          {canEditLeads && (
-                            <Button 
-                              size="sm" 
-                              variant="outline" 
-                              onClick={() => handleEditLead(lead)}
-                              className="flex items-center gap-1"
-                            >
-                              <Edit className="h-3 w-3" />
-                              Edit
-                            </Button>
-                          )}
-                          <Button 
-                            size="sm" 
-                            variant="outline" 
-                            onClick={() => handleToggleQualified(lead.id)}
-                            className="flex items-center gap-1"
-                          >
-                            <Edit className="h-3 w-3" />
-                            {lead.status === 'qualified' ? 'Unqualify' : 'Qualify'}
-                          </Button>
-                          <Button size="sm" variant="outline" className="flex items-center gap-1">
-                            <MessageSquare className="h-3 w-3" />
-                            Notes
-                          </Button>
-                          <Button size="sm" variant="outline" className="flex items-center gap-1">
-                            <Calendar className="h-3 w-3" />
-                            Schedule
-                          </Button>
-                          {/* History Button */}
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="flex items-center gap-1"
-                            onClick={() => {
-                              setHistoryLead(lead);
-                              setHistoryDrawerOpen(true);
-                            }}
-                            title="View Email History"
-                          >
-                            <Mail className="h-3 w-3" />
-                            History
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead>
+                <tr>
+                  <th
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                    onClick={() => sortLeads("name")}
+                  >
+                    Name
+                    {sortColumn === "name" && (
+                      <span>{sortDirection === "asc" ? " ▲" : " ▼"}</span>
+                    )}
+                  </th>
+                  <th
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                    onClick={() => sortLeads("email")}
+                  >
+                    Email
+                    {sortColumn === "email" && (
+                      <span>{sortDirection === "asc" ? " ▲" : " ▼"}</span>
+                    )}
+                  </th>
+                  <th
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                    onClick={() => sortLeads("phone")}
+                  >
+                    Phone
+                    {sortColumn === "phone" && (
+                      <span>{sortDirection === "asc" ? " ▲" : " ▼"}</span>
+                    )}
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filteredLeads.map((lead) => (
+                  <tr key={lead.id}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {lead.name}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {lead.email}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {lead.phone}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <Button variant="ghost" size="sm" onClick={() => editLead(lead)}>
+                        <Edit className="h-4 w-4 mr-2" />
+                        Edit
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => openEmailDialog(lead.id)}>
+                        <Mail className="h-4 w-4 mr-2" />
+                        Email
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => deleteLead(lead.id)}>
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </CardContent>
       </Card>
-      {/* Email Template Picker Dialog */}
-      <LeadEmailTemplateDialog
-        open={emailDialogOpen}
-        onClose={() => {
-          setEmailDialogOpen(false);
-          setDialogLeadId(null);
-        }}
-        templates={getTemplates()}
-        selectedTemplateId={selectedTemplateId}
-        onSelectTemplate={setSelectedTemplateId}
-        onSend={handleTemplateSend}
-        loading={sendingEmail}
-      />
-      {/* Email History Drawer (Sidebar) */}
-      <Drawer open={historyDrawerOpen} onOpenChange={setHistoryDrawerOpen}>
-        <DrawerContent>
-          <DrawerHeader>
-            <DrawerTitle>
-              Email History for {historyLead?.name}
-            </DrawerTitle>
-            <DrawerClose asChild>
-              <Button variant="ghost" className="absolute right-4 top-4">Close</Button>
-            </DrawerClose>
-          </DrawerHeader>
-          <div className="p-4 pt-0">
-            {historyLead ? (
-              <EmailTimeline emailLogs={historyEmailLogs} />
-            ) : (
-              <div className="text-center text-muted-foreground text-sm py-4">No contact selected.</div>
-            )}
+
+      <Dialog open={isEditing} onOpenChange={() => setIsEditing(false)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{isEditing ? "Edit Lead" : "Add Lead"}</DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="name">Name</Label>
+              <Input
+                type="text"
+                id="name"
+                name="name"
+                value={currentLead.name}
+                onChange={handleInputChange}
+              />
+            </div>
+            <div>
+              <Label htmlFor="phone">Phone</Label>
+              <Input
+                type="text"
+                id="phone"
+                name="phone"
+                value={currentLead.phone}
+                onChange={handleInputChange}
+              />
+            </div>
+            <div>
+              <Label htmlFor="email">Email</Label>
+              <Input
+                type="email"
+                id="email"
+                name="email"
+                value={currentLead.email}
+                onChange={handleInputChange}
+              />
+            </div>
+            <div>
+              <Label htmlFor="company">Company</Label>
+              <Input
+                type="text"
+                id="company"
+                name="company"
+                value={currentLead.company}
+                onChange={handleInputChange}
+              />
+            </div>
+            <div>
+              <Label htmlFor="title">Title</Label>
+              <Input
+                type="text"
+                id="title"
+                name="title"
+                value={currentLead.title}
+                onChange={handleInputChange}
+              />
+            </div>
+            <div>
+              <Label htmlFor="industry">Industry</Label>
+              <Input
+                type="text"
+                id="industry"
+                name="industry"
+                value={currentLead.industry}
+                onChange={handleInputChange}
+              />
+            </div>
+            <div>
+              <Label htmlFor="address">Address</Label>
+              <Input
+                type="text"
+                id="address"
+                name="address"
+                value={currentLead.address}
+                onChange={handleInputChange}
+              />
+            </div>
+            <div>
+              <Label htmlFor="city">City</Label>
+              <Input
+                type="text"
+                id="city"
+                name="city"
+                value={currentLead.city}
+                onChange={handleInputChange}
+              />
+            </div>
+            <div>
+              <Label htmlFor="state">State</Label>
+              <Input
+                type="text"
+                id="state"
+                name="state"
+                value={currentLead.state}
+                onChange={handleInputChange}
+              />
+            </div>
+            <div>
+              <Label htmlFor="zip">Zip</Label>
+              <Input
+                type="text"
+                id="zip"
+                name="zip"
+                value={currentLead.zip}
+                onChange={handleInputChange}
+              />
+            </div>
+            <div>
+              <Label htmlFor="source">Source</Label>
+              <Input
+                type="text"
+                id="source"
+                name="source"
+                value={currentLead.source}
+                onChange={handleInputChange}
+              />
+            </div>
+            <div>
+              <Label htmlFor="status">Status</Label>
+              <Select id="status" name="status" value={currentLead.status} onValueChange={(value) => handleSelectChange({ target: { name: 'status', value } } as any)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select a status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="New">New</SelectItem>
+                  <SelectItem value="Contacted">Contacted</SelectItem>
+                  <SelectItem value="In Progress">In Progress</SelectItem>
+                  <SelectItem value="Closed">Closed</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="priority">Priority</Label>
+              <Select id="priority" name="priority" value={currentLead.priority} onValueChange={(value) => handleSelectChange({ target: { name: 'priority', value } } as any)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select priority" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="High">High</SelectItem>
+                  <SelectItem value="Medium">Medium</SelectItem>
+                  <SelectItem value="Low">Low</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="estimatedValue">Estimated Value</Label>
+              <Input
+                type="number"
+                id="estimatedValue"
+                name="estimatedValue"
+                value={currentLead.estimatedValue}
+                onChange={handleInputChange}
+              />
+            </div>
           </div>
-        </DrawerContent>
-      </Drawer>
+          <Label htmlFor="notes">Notes</Label>
+          <Textarea
+            id="notes"
+            name="notes"
+            value={currentLead.notes}
+            onChange={handleInputChange}
+            className="mt-2"
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditing(false)}>
+              Cancel
+            </Button>
+            <Button onClick={saveLead}>Save</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showEmailDialog} onOpenChange={closeEmailDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Choose Email Template
+            </DialogTitle>
+          </DialogHeader>
+          <div>
+            <Select value={selectedEmailTemplate ?? ""} onValueChange={handleEmailTemplateSelect}>
+              <SelectTrigger>
+                <SelectValue placeholder="Pick a template" />
+              </SelectTrigger>
+              <SelectContent side="top" className="z-50 bg-white shadow-lg border">
+                {emailTemplates.length === 0 ? (
+                  <div className="py-2 px-4 text-gray-400 text-sm">No templates available</div>
+                ) : (
+                  emailTemplates.map((tpl) => (
+                    <SelectItem key={tpl.id} value={tpl.id}>
+                      {tpl.name}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter className="flex gap-2 mt-2">
+            <Button variant="outline" onClick={closeEmailDialog}>
+              <X className="h-4 w-4 mr-1" />
+              Cancel
+            </Button>
+            <Button onClick={() => sendEmailToLead(currentLead.id, selectedEmailTemplate || "")} disabled={!selectedEmailTemplate || isEmailLoading || emailTemplates.length === 0}>
+              <Send className="h-4 w-4 mr-1" />
+              Send Email
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
