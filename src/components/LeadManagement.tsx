@@ -150,6 +150,13 @@ const LeadManagement = () => {
     }));
   };
 
+  const handleSelectValueChange = (name: string, value: string) => {
+    setCurrentLead((prevLead) => ({
+      ...prevLead,
+      [name]: value,
+    }));
+  };
+
   const addLead = () => {
     setIsEditing(false);
     setCurrentLead(initialLead);
@@ -571,7 +578,7 @@ const LeadManagement = () => {
             </div>
             <div>
               <Label htmlFor="status">Status</Label>
-              <Select value={currentLead.status} onValueChange={(value) => handleSelectChange({ target: { name: 'status', value } as any })}>
+              <Select value={currentLead.status} onValueChange={(value) => handleSelectValueChange('status', value)}>
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select a status" />
                 </SelectTrigger>
@@ -585,7 +592,7 @@ const LeadManagement = () => {
             </div>
             <div>
               <Label htmlFor="priority">Priority</Label>
-              <Select value={currentLead.priority} onValueChange={(value) => handleSelectChange({ target: { name: 'priority', value } as any })}>
+              <Select value={currentLead.priority} onValueChange={(value) => handleSelectValueChange('priority', value)}>
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select priority" />
                 </SelectTrigger>
