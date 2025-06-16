@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useAMIContext } from "@/contexts/AMIContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { Phone, PhoneCall, PhoneOff, Clock, User } from "lucide-react";
 import EmailPanel from "./EmailPanel";
 
@@ -34,13 +35,19 @@ const UnifiedDialer: React.FC<UnifiedDialerProps> = ({
   initialData = {} 
 }) => {
   const { toast } = useToast();
-  const { isConnected } = useAMIContext();
+  const { isConnected, originateCall, lastEvent } = useAMIContext();
+  const { user } = useAuth();
   
   const [phoneNumber, setPhoneNumber] = useState("");
   const [contactName, setContactName] = useState("");
   const [contactEmail, setContactEmail] = useState("");
-  const [isDialing, setIsDialing] = useState(false);
-  const [callStatus, setCallStatus] = useState<"idle" | "dialing" | "connected" | "ended">("idle");
+  const [activeCall, setActiveCall] = useState<{
+    id: string;
+    leadName: string;
+    phone: string;
+    startTime: Date;
+    status: "ringing" | "connected" | "on-hold" | "ended";
+  } | null>(null);
   const [callDuration, setCallDuration] = useState(0);
 
   // Set initial data when component receives it
@@ -76,16 +83,115 @@ const UnifiedDialer: React.FC<UnifiedDialerProps> = ({
     }
   }, [phoneNumber, initialData.name]);
 
+  // Monitor AMI events for call status updates
+  useEffect(() => {
+    if (!lastEvent || !activeCall) return;
+
+    const userExtension = user?.extension;
+    if (!userExtension) return;
+
+    console.log('📞 [UnifiedDialer] Processing AMI event:', lastEvent);
+
+    // Check if this event is related to our user's extension
+    const isUserChannel = lastEvent.channel?.includes(`PJSIP/${userExtension}`) ||
+                         lastEvent.destchannel?.includes(`PJSIP/${userExtension}`) ||
+                         lastEvent.calleridnum === userExtension;
+
+    if (!isUserChannel) return;
+
+    let newStatus = activeCall.status;
+    let shouldUpdate = false;
+
+    switch (lastEvent.event) {
+      case 'Newchannel':
+        if (lastEvent.channelstate === '4' || lastEvent.channelstate === '5') {
+          newStatus = 'ringing';
+          shouldUpdate = true;
+        }
+        break;
+
+      case 'DialBegin':
+        newStatus = 'ringing';
+        shouldUpdate = true;
+        break;
+
+      case 'DialEnd':
+        if (lastEvent.dialstatus === 'ANSWER') {
+          newStatus = 'connected';
+          shouldUpdate = true;
+        } else if (lastEvent.dialstatus === 'BUSY' || lastEvent.dialstatus === 'NOANSWER') {
+          newStatus = 'ended';
+          shouldUpdate = true;
+        }
+        break;
+
+      case 'Bridge':
+        newStatus = 'connected';
+        shouldUpdate = true;
+        break;
+
+      case 'Hangup':
+        newStatus = 'ended';
+        shouldUpdate = true;
+        // Clear active call after a delay
+        setTimeout(() => {
+          setActiveCall(null);
+          setCallDuration(0);
+        }, 2000);
+        break;
+
+      case 'Hold':
+        newStatus = 'on-hold';
+        shouldUpdate = true;
+        break;
+
+      case 'Unhold':
+        newStatus = 'connected';
+        shouldUpdate = true;
+        break;
+    }
+
+    if (shouldUpdate && newStatus !== activeCall.status) {
+      console.log(`📞 [UnifiedDialer] Status change: ${activeCall.status} -> ${newStatus}`);
+      
+      const updatedCall = {
+        ...activeCall,
+        status: newStatus
+      };
+      
+      setActiveCall(updatedCall);
+      
+      // Calculate duration
+      const duration = Math.floor((new Date().getTime() - activeCall.startTime.getTime()) / 1000);
+      const durationStr = `${Math.floor(duration / 60).toString().padStart(2, '0')}:${(duration % 60).toString().padStart(2, '0')}`;
+      
+      // Update parent component
+      onCallInitiated({
+        id: activeCall.id,
+        leadName: activeCall.leadName,
+        phone: activeCall.phone,
+        duration: durationStr,
+        status: newStatus,
+        startTime: activeCall.startTime
+      });
+
+      toast({
+        title: "Call Status Update",
+        description: `Call ${newStatus}: ${activeCall.leadName}`,
+      });
+    }
+  }, [lastEvent, activeCall, user?.extension, onCallInitiated, toast]);
+
   // Call duration timer
   useEffect(() => {
     let interval: NodeJS.Timeout;
-    if (callStatus === "connected") {
+    if (activeCall?.status === "connected") {
       interval = setInterval(() => {
         setCallDuration(prev => prev + 1);
       }, 1000);
     }
     return () => clearInterval(interval);
-  }, [callStatus]);
+  }, [activeCall?.status]);
 
   const handleCall = async () => {
     if (!phoneNumber) {
@@ -106,58 +212,85 @@ const UnifiedDialer: React.FC<UnifiedDialerProps> = ({
       return;
     }
 
-    setIsDialing(true);
-    setCallStatus("dialing");
-    setCallDuration(0);
+    if (!user?.extension) {
+      toast({
+        title: "No Extension Assigned",
+        description: "No extension assigned to your user account. Contact administrator.",
+        variant: "destructive"
+      });
+      return;
+    }
 
     try {
-      // Simulate call initiation
-      setTimeout(() => {
-        setCallStatus("connected");
-        setIsDialing(false);
-        
-        const callData = {
+      console.log('Initiating real AMI call from UnifiedDialer:', {
+        channel: `PJSIP/${user.extension}`,
+        extension: phoneNumber,
+        context: 'from-internal'
+      });
+
+      const success = await originateCall(
+        `PJSIP/${user.extension}`,
+        phoneNumber,
+        'from-internal'
+      );
+
+      if (success) {
+        const newCall = {
           id: `call_${Date.now()}`,
           leadName: contactName || "Unknown Contact",
           phone: phoneNumber,
-          duration: "00:00",
-          status: "connected" as const,
           startTime: new Date(),
-          leadId: undefined
+          status: 'ringing' as const
         };
 
-        onCallInitiated(callData);
-
-        toast({
-          title: "Call Connected",
-          description: `Connected to ${phoneNumber}`,
+        setActiveCall(newCall);
+        setCallDuration(0);
+        
+        // Initial call record with ringing status
+        onCallInitiated({
+          id: newCall.id,
+          leadName: newCall.leadName,
+          phone: phoneNumber,
+          duration: '00:00',
+          status: 'ringing',
+          startTime: newCall.startTime
         });
-      }, 2000);
+        
+        toast({
+          title: "Call Initiated",
+          description: `Calling ${contactName || phoneNumber} from PJSIP extension ${user.extension}`,
+        });
+      } else {
+        throw new Error('AMI originate call failed');
+      }
     } catch (error) {
-      setIsDialing(false);
-      setCallStatus("idle");
+      console.error('Call origination error:', error);
       toast({
         title: "Call Failed",
-        description: "Unable to connect the call.",
+        description: "Could not initiate call. Check AMI connection and extension configuration.",
         variant: "destructive"
       });
     }
   };
 
   const handleHangup = () => {
-    setCallStatus("ended");
-    setIsDialing(false);
-    
-    toast({
-      title: "Call Ended",
-      description: `Call duration: ${formatDuration(callDuration)}`,
-    });
+    if (activeCall) {
+      setActiveCall({
+        ...activeCall,
+        status: 'ended'
+      });
+      
+      toast({
+        title: "Call Ended",
+        description: `Call duration: ${formatDuration(callDuration)}`,
+      });
 
-    // Reset after a moment
-    setTimeout(() => {
-      setCallStatus("idle");
-      setCallDuration(0);
-    }, 2000);
+      // Reset after a moment
+      setTimeout(() => {
+        setActiveCall(null);
+        setCallDuration(0);
+      }, 2000);
+    }
   };
 
   const formatDuration = (seconds: number) => {
@@ -177,11 +310,15 @@ const UnifiedDialer: React.FC<UnifiedDialerProps> = ({
   };
 
   const getStatusBadge = () => {
-    switch (callStatus) {
-      case "dialing":
-        return <Badge variant="outline" className="text-yellow-700 bg-yellow-50">Dialing...</Badge>;
+    if (!activeCall) return null;
+    
+    switch (activeCall.status) {
+      case "ringing":
+        return <Badge variant="outline" className="text-yellow-700 bg-yellow-50">Ringing...</Badge>;
       case "connected":
         return <Badge variant="outline" className="text-green-700 bg-green-50">Connected</Badge>;
+      case "on-hold":
+        return <Badge variant="outline" className="text-orange-700 bg-orange-50">On Hold</Badge>;
       case "ended":
         return <Badge variant="outline" className="text-gray-700 bg-gray-50">Call Ended</Badge>;
       default:
@@ -209,7 +346,7 @@ const UnifiedDialer: React.FC<UnifiedDialerProps> = ({
                 value={phoneNumber}
                 onChange={(e) => setPhoneNumber(e.target.value)}
                 placeholder="Enter phone number"
-                disabled={callStatus === "connected" || isDialing}
+                disabled={!!activeCall}
                 className="text-lg"
               />
             </div>
@@ -223,7 +360,7 @@ const UnifiedDialer: React.FC<UnifiedDialerProps> = ({
               </div>
             )}
 
-            {callStatus === "connected" && (
+            {activeCall && activeCall.status === "connected" && (
               <div className="p-3 bg-blue-50 border border-blue-200 rounded flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Clock className="h-4 w-4 text-blue-600" />
@@ -234,18 +371,18 @@ const UnifiedDialer: React.FC<UnifiedDialerProps> = ({
             )}
 
             <div className="grid grid-cols-3 gap-2">
-              {callStatus === "idle" && (
+              {!activeCall && (
                 <Button
                   onClick={handleCall}
-                  disabled={disabled || !phoneNumber || !isConnected}
+                  disabled={disabled || !phoneNumber || !isConnected || !user?.extension}
                   className="col-span-2 bg-green-600 hover:bg-green-700"
                 >
                   <PhoneCall className="h-4 w-4 mr-2" />
-                  {isDialing ? "Dialing..." : "Call"}
+                  {!isConnected ? "AMI Not Connected" : !user?.extension ? "No Extension" : "Call"}
                 </Button>
               )}
               
-              {(callStatus === "connected" || callStatus === "dialing") && (
+              {activeCall && (activeCall.status === "connected" || activeCall.status === "ringing") && (
                 <Button
                   onClick={handleHangup}
                   className="col-span-2 bg-red-600 hover:bg-red-700"
@@ -258,7 +395,7 @@ const UnifiedDialer: React.FC<UnifiedDialerProps> = ({
               <Button
                 onClick={clearNumber}
                 variant="outline"
-                disabled={callStatus === "connected" || isDialing}
+                disabled={!!activeCall}
               >
                 Clear
               </Button>
@@ -278,7 +415,7 @@ const UnifiedDialer: React.FC<UnifiedDialerProps> = ({
                 key={digit}
                 variant="outline"
                 onClick={() => handleNumberPadClick(digit)}
-                disabled={callStatus === "connected" || isDialing}
+                disabled={!!activeCall}
                 className="h-10"
               >
                 {digit}
