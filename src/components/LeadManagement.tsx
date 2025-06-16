@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { simpleEmailService, SimpleEmailTemplate } from "@/services/simpleEmailService";
+import { emailService } from "@/services/emailService";
 import {
   Users,
   Plus,
@@ -284,6 +284,8 @@ const LeadManagement = () => {
     setSelectedEmailTemplate(templateId);
   };
 
+  const emailTemplates = emailService.getTemplates();
+
   const sendEmailToLead = async (leadId: string, templateId: string) => {
     if (!currentLead?.email) {
       toast({
@@ -293,8 +295,6 @@ const LeadManagement = () => {
       });
       return;
     }
-
-    const { emailService } = await import("@/services/emailService");
 
     if (!emailService.isConfigured()) {
       toast({
@@ -571,7 +571,7 @@ const LeadManagement = () => {
             </div>
             <div>
               <Label htmlFor="status">Status</Label>
-              <Select value={currentLead.status} onValueChange={(value) => handleSelectChange({ target: { name: 'status', value } as any)}>
+              <Select value={currentLead.status} onValueChange={(value) => handleSelectChange({ target: { name: 'status', value } as any })}>
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select a status" />
                 </SelectTrigger>
@@ -585,7 +585,7 @@ const LeadManagement = () => {
             </div>
             <div>
               <Label htmlFor="priority">Priority</Label>
-              <Select value={currentLead.priority} onValueChange={(value) => handleSelectChange({ target: { name: 'priority', value } as any)}>
+              <Select value={currentLead.priority} onValueChange={(value) => handleSelectChange({ target: { name: 'priority', value } as any })}>
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select priority" />
                 </SelectTrigger>
@@ -655,7 +655,10 @@ const LeadManagement = () => {
               <X className="h-4 w-4 mr-1" />
               Cancel
             </Button>
-            <Button onClick={() => sendEmailToLead(currentLead.id, selectedEmailTemplate || "")} disabled={!selectedEmailTemplate || isEmailLoading || emailTemplates.length === 0}>
+            <Button 
+              onClick={() => sendEmailToLead(currentLead.id, selectedEmailTemplate || "")} 
+              disabled={!selectedEmailTemplate || isEmailLoading || emailTemplates.length === 0}
+            >
               <Send className="h-4 w-4 mr-1" />
               Send Email
             </Button>
