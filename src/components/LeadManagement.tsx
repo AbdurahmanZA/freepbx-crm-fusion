@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -370,6 +371,32 @@ const LeadManagement = () => {
     }
   };
 
+  const handleDialLead = (lead: Lead) => {
+    if (!lead.phone) {
+      toast({
+        title: "No Phone Number",
+        description: "This lead doesn't have a phone number.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Dispatch custom event to open drawer and populate dialer
+    const event = new CustomEvent('openDialerForLead', { 
+      detail: { 
+        phone: lead.phone, 
+        name: lead.name,
+        email: lead.email 
+      } 
+    });
+    window.dispatchEvent(event);
+
+    toast({
+      title: "Dialer Opened",
+      description: `Opening dialer for ${lead.name}`,
+    });
+  };
+
   return (
     <div>
       <Card>
@@ -442,6 +469,10 @@ const LeadManagement = () => {
                       <Button variant="ghost" size="sm" onClick={() => editLead(lead)}>
                         <Edit className="h-4 w-4 mr-2" />
                         Edit
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => handleDialLead(lead)}>
+                        <Phone className="h-4 w-4 mr-2" />
+                        Call
                       </Button>
                       <Button variant="ghost" size="sm" onClick={() => openEmailDialog(lead.id)}>
                         <Mail className="h-4 w-4 mr-2" />

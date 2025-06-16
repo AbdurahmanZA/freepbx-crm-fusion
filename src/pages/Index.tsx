@@ -1,4 +1,5 @@
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
 import LeadManagement from "@/components/LeadManagement";
@@ -31,8 +32,29 @@ const Index = () => {
   const [activeTab, setActiveTab] = useState("leads");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerCard, setDrawerCard] = useState<"dialer" | "email" | "callLogs">("dialer");
+  const [dialerData, setDialerData] = useState<{
+    phone?: string;
+    name?: string;
+    email?: string;
+  }>({});
 
   const userRole = user?.role || "agent";
+
+  // Listen for custom events to open dialer with pre-populated data
+  useEffect(() => {
+    const handleOpenDialerForLead = (event: CustomEvent) => {
+      const { phone, name, email } = event.detail;
+      setDialerData({ phone, name, email });
+      setDrawerCard("dialer");
+      setDrawerOpen(true);
+    };
+
+    window.addEventListener('openDialerForLead', handleOpenDialerForLead as EventListener);
+    
+    return () => {
+      window.removeEventListener('openDialerForLead', handleOpenDialerForLead as EventListener);
+    };
+  }, []);
 
   const handleCallInitiated = (callData: {
     id: string;
@@ -100,9 +122,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <div 
-        className="container mx-auto p-4 space-y-6"
-      >
+      <div className="container mx-auto p-4 space-y-6">
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold text-foreground">FreePBX CRM Dashboard</h1>
@@ -179,7 +199,11 @@ const Index = () => {
           <div className="flex-1 overflow-auto p-4">
             {drawerCard === "dialer" && (
               <div className="max-w-md mx-auto">
-                <UnifiedDialer onCallInitiated={handleCallInitiated} disabled={false} />
+                <UnifiedDialer 
+                  onCallInitiated={handleCallInitiated} 
+                  disabled={false} 
+                  initialData={dialerData}
+                />
               </div>
             )}
             

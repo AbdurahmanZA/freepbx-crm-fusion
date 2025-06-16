@@ -21,9 +21,18 @@ interface UnifiedDialerProps {
     leadId?: string;
   }) => void;
   disabled?: boolean;
+  initialData?: {
+    phone?: string;
+    name?: string;
+    email?: string;
+  };
 }
 
-const UnifiedDialer: React.FC<UnifiedDialerProps> = ({ onCallInitiated, disabled = false }) => {
+const UnifiedDialer: React.FC<UnifiedDialerProps> = ({ 
+  onCallInitiated, 
+  disabled = false, 
+  initialData = {} 
+}) => {
   const { toast } = useToast();
   const { isConnected } = useAMIContext();
   
@@ -33,6 +42,19 @@ const UnifiedDialer: React.FC<UnifiedDialerProps> = ({ onCallInitiated, disabled
   const [isDialing, setIsDialing] = useState(false);
   const [callStatus, setCallStatus] = useState<"idle" | "dialing" | "connected" | "ended">("idle");
   const [callDuration, setCallDuration] = useState(0);
+
+  // Set initial data when component receives it
+  useEffect(() => {
+    if (initialData.phone) {
+      setPhoneNumber(initialData.phone);
+    }
+    if (initialData.name) {
+      setContactName(initialData.name);
+    }
+    if (initialData.email) {
+      setContactEmail(initialData.email);
+    }
+  }, [initialData]);
 
   // Auto-populate contact info when phone number changes
   useEffect(() => {
@@ -47,12 +69,12 @@ const UnifiedDialer: React.FC<UnifiedDialerProps> = ({ onCallInitiated, disabled
       if (matchedLead) {
         setContactName(matchedLead.name);
         setContactEmail(matchedLead.email || '');
-      } else {
+      } else if (!initialData.name) {
         setContactName('');
         setContactEmail('');
       }
     }
-  }, [phoneNumber]);
+  }, [phoneNumber, initialData.name]);
 
   // Call duration timer
   useEffect(() => {
