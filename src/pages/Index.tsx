@@ -102,7 +102,6 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       <div 
         className="container mx-auto p-4 space-y-6"
-        onClick={handleMainContentClick}
       >
         <div className="flex justify-between items-center">
           <div>
