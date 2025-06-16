@@ -34,8 +34,8 @@ const Drawer = ({
     shouldScaleBackground={shouldScaleBackground}
     open={open}
     onOpenChange={onOpenChange}
-    // disable default close on overlay click
-    dismissible={false}
+    // Allow dismissing by clicking outside or swiping
+    dismissible={true}
     {...props}
   />
 )
@@ -47,7 +47,7 @@ const DrawerPortal = DrawerPrimitive.Portal
 
 const DrawerClose = DrawerPrimitive.Close
 
-// 2. Overlay: NEVER dismiss the drawer when overlay is clicked
+// 2. Overlay: Allow dismissing the drawer when overlay is clicked
 const DrawerOverlay = React.forwardRef<
   React.ElementRef<typeof DrawerPrimitive.Overlay>,
   React.ComponentPropsWithoutRef<typeof DrawerPrimitive.Overlay>
@@ -55,11 +55,9 @@ const DrawerOverlay = React.forwardRef<
   <DrawerPrimitive.Overlay
     ref={ref}
     className={cn(
-      // pointer-events-none keeps overlay from swallowing clicks
-      "fixed inset-0 z-50 bg-transparent pointer-events-none",
+      "fixed inset-0 z-50 bg-black/20",
       className
     )}
-    // Remove any onClick that might dismiss; drawer only closes via close btn
     {...props}
   />
 ))
@@ -79,9 +77,6 @@ const DrawerContent = React.forwardRef<
         "sm:left-auto sm:right-0 sm:max-w-xl sm:w-[32rem]",
         className
       )}
-      // prevent swipe-to-close, optional: remove if not needed
-      // @ts-ignore
-      swipeToClose={false}
       {...props}
     >
       {/* Drawer handle, thinner and smaller */}

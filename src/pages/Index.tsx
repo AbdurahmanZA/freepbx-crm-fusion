@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
@@ -49,13 +48,6 @@ const Index = () => {
 
   const handleTestComplete = (results: { freepbx: boolean; database: boolean }) => {
     console.log('Connection test completed:', results);
-  };
-
-  // Close drawer when clicking on the main content
-  const handleMainContentClick = () => {
-    if (drawerOpen) {
-      setDrawerOpen(false);
-    }
   };
 
   // Mock call history data
