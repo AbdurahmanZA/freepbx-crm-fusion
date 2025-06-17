@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -136,11 +137,15 @@ const UnifiedDialer: React.FC<UnifiedDialerProps> = ({
     if (!userExtension) return;
 
     console.log('📞 [UnifiedDialer] Processing AMI event:', lastEvent);
+    console.log('📞 [UnifiedDialer] Active call:', activeCall);
+    console.log('📞 [UnifiedDialer] User extension:', userExtension);
 
-    // Check if this event is related to our user's extension
+    // Check if this event is related to our user's extension or the dialed number
     const isUserChannel = lastEvent.channel?.includes(`PJSIP/${userExtension}`) ||
                          lastEvent.destchannel?.includes(`PJSIP/${userExtension}`) ||
-                         lastEvent.calleridnum === userExtension;
+                         lastEvent.calleridnum === userExtension ||
+                         lastEvent.connectedlinenum === activeCall.phone ||
+                         lastEvent.calleridnum === activeCall.phone;
 
     if (!isUserChannel) return;
 
@@ -164,7 +169,7 @@ const UnifiedDialer: React.FC<UnifiedDialerProps> = ({
         if (lastEvent.dialstatus === 'ANSWER') {
           newStatus = 'connected';
           shouldUpdate = true;
-        } else if (lastEvent.dialstatus === 'BUSY' || lastEvent.dialstatus === 'NOANSWER') {
+        } else if (['BUSY', 'NOANSWER', 'CONGESTION', 'CHANUNAVAIL', 'CANCEL'].includes(lastEvent.dialstatus || '')) {
           newStatus = 'ended';
           shouldUpdate = true;
         }
@@ -176,10 +181,12 @@ const UnifiedDialer: React.FC<UnifiedDialerProps> = ({
         break;
 
       case 'Hangup':
+        console.log('📞 [UnifiedDialer] Hangup event detected - ending call');
         newStatus = 'ended';
         shouldUpdate = true;
-        // Clear active call after a delay
+        // Clear active call after a short delay to show "ended" status briefly
         setTimeout(() => {
+          console.log('📞 [UnifiedDialer] Clearing active call after hangup');
           setActiveCall(null);
           setCallDuration(0);
         }, 2000);
