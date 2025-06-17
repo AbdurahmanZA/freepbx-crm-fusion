@@ -4,7 +4,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
 import LeadManagement from "@/components/LeadManagement";
 import CallCenter from "@/components/CallCenter";
-import ContactManager from "@/components/ContactManager";
 import UserManagement from "@/components/UserManagement";
 import IntegrationSettings from "@/components/IntegrationSettings";
 import ReportsAnalytics from "@/components/ReportsAnalytics";
@@ -40,7 +39,6 @@ const Index = () => {
 
   const userRole = user?.role || "agent";
 
-  // Listen for custom events to open dialer with pre-populated data
   useEffect(() => {
     const handleOpenDialerForLead = (event: CustomEvent) => {
       const { phone, name, email } = event.detail;
@@ -72,7 +70,6 @@ const Index = () => {
     console.log('Connection test completed:', results);
   };
 
-  // Mock call history data
   const mockCallHistory = [
     {
       id: 1,
@@ -101,7 +98,6 @@ const Index = () => {
   const tabs = [
     { id: "leads", label: "Lead Management", component: <LeadManagement /> },
     { id: "call-center", label: "Call Center", component: <CallCenter userRole={userRole} /> },
-    { id: "contacts", label: "Contact Manager", component: <ContactManager /> },
     { id: "callback-calendar", label: "Callback Calendar", component: <CallbackCalendar userRole={userRole} /> },
     { id: "email-history", label: "Email History", component: <SimpleEmailHistory /> },
     { id: "call-logs", label: "Call Logs", component: <CallLogs /> },
@@ -110,7 +106,6 @@ const Index = () => {
     { id: "integrations", label: "Integration Settings", component: <IntegrationSettings /> },
   ];
 
-  // Admin-only tabs
   const adminTabs = [
     { id: "users", label: "User Management", component: <UserManagement /> },
     { id: "system", label: "System Status", component: <SystemStatus /> },
@@ -133,7 +128,7 @@ const Index = () => {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3 lg:grid-cols-4 xl:grid-cols-9 gap-1">
+          <TabsList className="grid w-full grid-cols-3 lg:grid-cols-4 xl:grid-cols-8 gap-1">
             {allTabs.map((tab) => (
               <TabsTrigger
                 key={tab.id}
@@ -153,18 +148,15 @@ const Index = () => {
         </Tabs>
       </div>
 
-      {/* Mini tab to open drawer when closed */}
       {!drawerOpen && (
         <DrawerMiniTab onClick={() => setDrawerOpen(true)} />
       )}
 
-      {/* Bottom Drawer */}
       <Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
         <DrawerContent className="h-[400px]">
           <DrawerHeader className="pb-2">
             <DrawerTitle className="text-center">Quick Tools</DrawerTitle>
             
-            {/* Card switcher buttons */}
             <div className="flex justify-center gap-2 mt-2">
               <Button
                 size="sm"

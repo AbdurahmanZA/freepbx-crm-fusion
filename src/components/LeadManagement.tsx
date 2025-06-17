@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -87,6 +86,125 @@ const initialLead: Lead = {
   tags: [],
 };
 
+// Permanent dummy leads with specified contact details
+const dummyLeads: Lead[] = [
+  {
+    id: "lead_dummy_1",
+    name: "Ahmed Hassan",
+    phone: "0629145963",
+    email: "admin@abdurahman.co.za",
+    address: "123 Business Street",
+    city: "Cape Town",
+    state: "Western Cape",
+    zip: "8001",
+    source: "Website",
+    status: "New",
+    createdAt: "2024-06-15",
+    updatedAt: "2024-06-15",
+    agentId: "agent1",
+    company: "Tech Solutions Ltd",
+    title: "CTO",
+    industry: "Technology",
+    notes: "Interested in enterprise software solutions",
+    priority: "High",
+    lastContacted: "2024-06-15",
+    estimatedValue: 50000,
+    tags: ["hot-lead", "enterprise"]
+  },
+  {
+    id: "lead_dummy_2",
+    name: "Sarah Williams",
+    phone: "0629145963",
+    email: "admin@abdurahman.co.za",
+    address: "456 Commerce Ave",
+    city: "Johannesburg",
+    state: "Gauteng",
+    zip: "2000",
+    source: "Referral",
+    status: "Contacted",
+    createdAt: "2024-06-14",
+    updatedAt: "2024-06-16",
+    agentId: "agent2",
+    company: "Marketing Pro Inc",
+    title: "Marketing Director",
+    industry: "Marketing",
+    notes: "Looking for CRM integration solutions",
+    priority: "Medium",
+    lastContacted: "2024-06-16",
+    estimatedValue: 25000,
+    tags: ["warm-lead", "integration"]
+  },
+  {
+    id: "lead_dummy_3",
+    name: "Michael Johnson",
+    phone: "0629145963",
+    email: "admin@abdurahman.co.za",
+    address: "789 Industrial Blvd",
+    city: "Durban",
+    state: "KwaZulu-Natal",
+    zip: "4000",
+    source: "Cold Call",
+    status: "In Progress",
+    createdAt: "2024-06-13",
+    updatedAt: "2024-06-17",
+    agentId: "agent1",
+    company: "Manufacturing Corp",
+    title: "Operations Manager",
+    industry: "Manufacturing",
+    notes: "Needs call center solution for customer support",
+    priority: "High",
+    lastContacted: "2024-06-17",
+    estimatedValue: 75000,
+    tags: ["call-center", "support"]
+  },
+  {
+    id: "lead_dummy_4",
+    name: "Lisa Chen",
+    phone: "0629145963",
+    email: "admin@abdurahman.co.za",
+    address: "321 Finance Plaza",
+    city: "Pretoria",
+    state: "Gauteng",
+    zip: "0001",
+    source: "LinkedIn",
+    status: "New",
+    createdAt: "2024-06-17",
+    updatedAt: "2024-06-17",
+    agentId: "agent3",
+    company: "Financial Services Group",
+    title: "IT Manager",
+    industry: "Finance",
+    notes: "Evaluating communication platforms",
+    priority: "Medium",
+    lastContacted: "",
+    estimatedValue: 35000,
+    tags: ["finance", "communication"]
+  },
+  {
+    id: "lead_dummy_5",
+    name: "David Brown",
+    phone: "0629145963",
+    email: "admin@abdurahman.co.za",
+    address: "654 Retail Center",
+    city: "Port Elizabeth",
+    state: "Eastern Cape",
+    zip: "6000",
+    source: "Trade Show",
+    status: "Closed",
+    createdAt: "2024-06-10",
+    updatedAt: "2024-06-16",
+    agentId: "agent2",
+    company: "Retail Chain Ltd",
+    title: "Store Manager",
+    industry: "Retail",
+    notes: "Successfully implemented our solution",
+    priority: "Low",
+    lastContacted: "2024-06-16",
+    estimatedValue: 15000,
+    tags: ["closed-won", "retail"]
+  }
+];
+
 const LeadManagement = () => {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -108,14 +226,23 @@ const LeadManagement = () => {
   const fetchLeads = () => {
     try {
       const storedLeads = localStorage.getItem("leads");
+      let allLeads = [...dummyLeads]; // Always start with dummy leads
+      
       if (storedLeads) {
-        setLeads(JSON.parse(storedLeads));
+        const userLeads = JSON.parse(storedLeads);
+        // Add user-created leads that don't conflict with dummy leads
+        const nonDummyLeads = userLeads.filter((lead: Lead) => !lead.id.startsWith("lead_dummy_"));
+        allLeads = [...allLeads, ...nonDummyLeads];
       }
+      
+      setLeads(allLeads);
     } catch (error) {
       console.error("Error fetching leads from localStorage:", error);
+      // Fallback to just dummy leads if there's an error
+      setLeads(dummyLeads);
       toast({
-        title: "Error Fetching Leads",
-        description: "Failed to retrieve leads from local storage.",
+        title: "Warning",
+        description: "Using default leads due to storage error.",
         variant: "destructive",
       });
     }
@@ -123,7 +250,9 @@ const LeadManagement = () => {
 
   const saveLeads = (newLeads: Lead[]) => {
     try {
-      localStorage.setItem("leads", JSON.stringify(newLeads));
+      // Only save non-dummy leads to localStorage
+      const userLeads = newLeads.filter(lead => !lead.id.startsWith("lead_dummy_"));
+      localStorage.setItem("leads", JSON.stringify(userLeads));
       setLeads(newLeads);
     } catch (error) {
       console.error("Error saving leads to localStorage:", error);
@@ -161,13 +290,20 @@ const LeadManagement = () => {
   const addLead = () => {
     setIsEditing(false);
     setCurrentLead(initialLead);
-    // Open a dialog or form for adding a new lead
   };
 
   const editLead = (lead: Lead) => {
+    // Prevent editing dummy leads
+    if (lead.id.startsWith("lead_dummy_")) {
+      toast({
+        title: "Cannot Edit",
+        description: "Demo leads cannot be edited.",
+        variant: "destructive",
+      });
+      return;
+    }
     setIsEditing(true);
     setCurrentLead(lead);
-    // Open a dialog or form for editing the lead
   };
 
   const saveLead = () => {
@@ -181,7 +317,6 @@ const LeadManagement = () => {
     }
 
     if (isEditing) {
-      // Update existing lead
       const updatedLeads = leads.map((lead) =>
         lead.id === currentLead.id ? currentLead : lead
       );
@@ -191,8 +326,12 @@ const LeadManagement = () => {
         description: `${currentLead.name} has been updated successfully.`,
       });
     } else {
-      // Add new lead
-      const newLead = { ...currentLead, id: `lead_${Date.now()}` };
+      const newLead = { 
+        ...currentLead, 
+        id: `lead_${Date.now()}`,
+        createdAt: new Date().toISOString().split('T')[0],
+        updatedAt: new Date().toISOString().split('T')[0]
+      };
       saveLeads([...leads, newLead]);
       toast({
         title: "Lead Added",
@@ -204,6 +343,16 @@ const LeadManagement = () => {
   };
 
   const deleteLead = (leadId: string) => {
+    // Prevent deleting dummy leads
+    if (leadId.startsWith("lead_dummy_")) {
+      toast({
+        title: "Cannot Delete",
+        description: "Demo leads cannot be deleted.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const leadToDelete = leads.find(lead => lead.id === leadId);
     if (!leadToDelete) {
       toast({
@@ -231,10 +380,8 @@ const LeadManagement = () => {
 
   const sortLeads = (column: string) => {
     if (column === sortColumn) {
-      // Reverse the sorting direction
       setSortDirection(sortDirection === "asc" ? "desc" : "asc");
     } else {
-      // Set new sorting column and default direction
       setSortColumn(column);
       setSortDirection("asc");
     }
@@ -326,7 +473,6 @@ const LeadManagement = () => {
         return;
       }
 
-      // Prepare email content
       let emailBody = template.body;
       if (currentLead.name) {
         emailBody = emailBody.replace(/Dear Customer/g, `Dear ${currentLead.name}`);
@@ -381,7 +527,6 @@ const LeadManagement = () => {
       return;
     }
 
-    // Dispatch custom event to open drawer and populate dialer
     const event = new CustomEvent('openDialerForLead', { 
       detail: { 
         phone: lead.phone, 
@@ -448,6 +593,24 @@ const LeadManagement = () => {
                       <span>{sortDirection === "asc" ? " ▲" : " ▼"}</span>
                     )}
                   </th>
+                  <th
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                    onClick={() => sortLeads("company")}
+                  >
+                    Company
+                    {sortColumn === "company" && (
+                      <span>{sortDirection === "asc" ? " ▲" : " ▼"}</span>
+                    )}
+                  </th>
+                  <th
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer"
+                    onClick={() => sortLeads("status")}
+                  >
+                    Status
+                    {sortColumn === "status" && (
+                      <span>{sortDirection === "asc" ? " ▲" : " ▼"}</span>
+                    )}
+                  </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actions
                   </th>
@@ -458,6 +621,9 @@ const LeadManagement = () => {
                   <tr key={lead.id}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       {lead.name}
+                      {lead.id.startsWith("lead_dummy_") && (
+                        <Badge variant="secondary" className="ml-2 text-xs">Demo</Badge>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {lead.email}
@@ -465,23 +631,34 @@ const LeadManagement = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {lead.phone}
                     </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {lead.company}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <Badge variant={
+                        lead.status === "New" ? "default" :
+                        lead.status === "Contacted" ? "secondary" :
+                        lead.status === "In Progress" ? "outline" :
+                        "destructive"
+                      }>
+                        {lead.status}
+                      </Badge>
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <Button variant="ghost" size="sm" onClick={() => editLead(lead)}>
-                        <Edit className="h-4 w-4 mr-2" />
-                        Edit
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => handleDialLead(lead)}>
-                        <Phone className="h-4 w-4 mr-2" />
-                        Call
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => openEmailDialog(lead.id)}>
-                        <Mail className="h-4 w-4 mr-2" />
-                        Email
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => deleteLead(lead.id)}>
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Delete
-                      </Button>
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="sm" onClick={() => editLead(lead)}>
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => handleDialLead(lead)}>
+                          <Phone className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => openEmailDialog(lead.id)}>
+                          <Mail className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => deleteLead(lead.id)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ))}
