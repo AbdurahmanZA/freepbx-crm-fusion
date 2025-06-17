@@ -45,6 +45,7 @@ export const FreePBXProvider: React.FC<FreePBXProviderProps> = ({ children }) =>
     username: 'admin',
     password: 'amp111',
     useHttps: false,
+    apiSecret: '7ecfaa830f88e7475f1010b2e446d6f6',
   });
 
   const [restAPI, setRestAPI] = useState<FreePBXRestAPI | null>(null);

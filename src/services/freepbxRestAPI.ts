@@ -5,6 +5,7 @@ interface FreePBXConfig {
   username: string;
   password: string;
   useHttps?: boolean;
+  apiSecret?: string;
 }
 
 interface CallOriginateRequest {
@@ -46,6 +47,13 @@ class FreePBXRestAPI {
 
   private async authenticate(): Promise<boolean> {
     try {
+      // Use API secret if provided, otherwise fall back to username/password
+      if (this.config.apiSecret) {
+        console.log('FreePBX REST API: Using API secret authentication');
+        this.authToken = this.config.apiSecret;
+        return true;
+      }
+
       const response = await fetch(`${this.baseUrl}/admin/api/api/token`, {
         method: 'POST',
         headers: {
@@ -81,11 +89,21 @@ class FreePBXRestAPI {
     }
 
     const url = `${this.baseUrl}/admin/api/api/${endpoint}`;
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+
+    // Use API secret in Authorization header if available
+    if (this.config.apiSecret) {
+      headers['Authorization'] = `Bearer ${this.config.apiSecret}`;
+    } else if (this.authToken) {
+      headers['Authorization'] = `Bearer ${this.authToken}`;
+    }
+
     const response = await fetch(url, {
       ...options,
       headers: {
-        'Authorization': `Bearer ${this.authToken}`,
-        'Content-Type': 'application/json',
+        ...headers,
         ...options.headers,
       },
     });
