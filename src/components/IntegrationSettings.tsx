@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -22,11 +21,11 @@ const IntegrationSettings = () => {
   });
 
   const [freepbxConfig, setFreepbxConfig] = useState({
-    host: localStorage.getItem('freepbx_host') || '',
+    host: localStorage.getItem('freepbx_host') || '192.168.0.5',
     port: localStorage.getItem('freepbx_port') || '80',
-    username: localStorage.getItem('freepbx_username') || '',
-    password: localStorage.getItem('freepbx_password') || '',
-    apiKey: localStorage.getItem('freepbx_api_key') || ''
+    username: localStorage.getItem('freepbx_username') || 'admin',
+    password: localStorage.getItem('freepbx_password') || 'amp111',
+    apiKey: localStorage.getItem('freepbx_api_secret') || '7ecfaa830f88e7475f1010b2e446d6f6'
   });
 
   const [smtpConfig, setSmtpConfig] = useState({
@@ -50,9 +49,28 @@ const IntegrationSettings = () => {
 
   const handleTestFreePBXConnection = async () => {
     setFreepbxConnectionStatus('testing');
-    setTimeout(() => {
+    
+    // Test the actual REST API endpoint
+    try {
+      const response = await fetch(`http://${freepbxConfig.host}:${freepbxConfig.port}/admin/api/api/channels`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${freepbxConfig.apiKey}`,
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (response.ok) {
+        setFreepbxConnectionStatus('connected');
+        console.log('FreePBX REST API connection successful');
+      } else {
+        setFreepbxConnectionStatus('disconnected');
+        console.error('FreePBX REST API connection failed:', response.statusText);
+      }
+    } catch (error) {
       setFreepbxConnectionStatus('disconnected');
-    }, 2000);
+      console.error('FreePBX REST API connection error:', error);
+    }
   };
 
   const handleTestSMTPConnection = async () => {
@@ -86,7 +104,8 @@ const IntegrationSettings = () => {
   };
 
   const handleFreePBXConfigUpdate = (field: string, value: string) => {
-    localStorage.setItem(`freepbx_${field.toLowerCase()}`, value);
+    const storageKey = field === 'apiKey' ? 'freepbx_api_secret' : `freepbx_${field.toLowerCase()}`;
+    localStorage.setItem(storageKey, value);
     setFreepbxConfig(prev => ({
       ...prev,
       [field]: value
