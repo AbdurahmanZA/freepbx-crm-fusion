@@ -1,8 +1,8 @@
+
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import EmailJSConfigCard from "@/components/integration/EmailJSConfigCard";
-import AMIBridgeCard from "@/components/integration/AMIBridgeCard";
 import DiscordWebhookCard from "@/components/integration/DiscordWebhookCard";
 import FreePBXAPICard from "@/components/integration/FreePBXAPICard";
 import SMTPConfigCard from "@/components/integration/SMTPConfigCard";
@@ -11,7 +11,6 @@ import { Settings, Mail, Database, Webhook, Phone, MessageCircle } from "lucide-
 import { useState } from "react";
 
 const IntegrationSettings = () => {
-  const [amiConnectionStatus, setAmiConnectionStatus] = useState<'connected' | 'disconnected' | 'testing'>('disconnected');
   const [freepbxConnectionStatus, setFreepbxConnectionStatus] = useState<'connected' | 'disconnected' | 'testing'>('disconnected');
   const [smtpConnectionStatus, setSmtpConnectionStatus] = useState<'connected' | 'disconnected' | 'testing'>('disconnected');
   const [databaseConnectionStatus, setDatabaseConnectionStatus] = useState<'connected' | 'disconnected' | 'testing'>('disconnected');
@@ -48,10 +47,6 @@ const IntegrationSettings = () => {
     username: localStorage.getItem('db_username') || '',
     password: localStorage.getItem('db_password') || ''
   });
-
-  const handleTestAMIConnection = () => {
-    console.log('Testing AMI connection...');
-  };
 
   const handleTestFreePBXConnection = async () => {
     setFreepbxConnectionStatus('testing');
@@ -144,11 +139,6 @@ const IntegrationSettings = () => {
         </TabsList>
 
         <TabsContent value="telephony" className="space-y-4">
-          <AMIBridgeCard 
-            connectionStatus={amiConnectionStatus}
-            onTestConnection={handleTestAMIConnection}
-            onConnectionStatusChange={setAmiConnectionStatus}
-          />
           <FreePBXAPICard 
             config={freepbxConfig}
             connectionStatus={freepbxConnectionStatus}

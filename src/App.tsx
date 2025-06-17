@@ -4,7 +4,6 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { AMIProvider } from "@/contexts/AMIContext";
 import { FreePBXProvider } from "@/contexts/FreePBXContext";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import LoginForm from "@/components/auth/LoginForm";
@@ -50,11 +49,9 @@ const App = () => (
     <TooltipProvider>
       <AuthProvider>
         <FreePBXProvider>
-          <AMIProvider>
-            <AppRoutes />
-            <Toaster />
-            <Sonner />
-          </AMIProvider>
+          <AppRoutes />
+          <Toaster />
+          <Sonner />
         </FreePBXProvider>
       </AuthProvider>
     </TooltipProvider>
