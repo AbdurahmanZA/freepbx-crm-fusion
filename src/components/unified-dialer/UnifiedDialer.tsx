@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -29,6 +28,16 @@ interface UnifiedDialerProps {
   };
 }
 
+interface ActiveCallState {
+  id: string;
+  leadName: string;
+  phone: string;
+  startTime: string; // Store as ISO string for serialization
+  status: "ringing" | "connected" | "on-hold" | "ended";
+}
+
+const ACTIVE_CALL_STORAGE_KEY = 'unified_dialer_active_call';
+
 const UnifiedDialer: React.FC<UnifiedDialerProps> = ({ 
   onCallInitiated, 
   disabled = false, 
@@ -49,6 +58,42 @@ const UnifiedDialer: React.FC<UnifiedDialerProps> = ({
     status: "ringing" | "connected" | "on-hold" | "ended";
   } | null>(null);
   const [callDuration, setCallDuration] = useState(0);
+
+  // Load persisted call state on component mount
+  useEffect(() => {
+    const persistedCall = sessionStorage.getItem(ACTIVE_CALL_STORAGE_KEY);
+    if (persistedCall) {
+      try {
+        const callState: ActiveCallState = JSON.parse(persistedCall);
+        setActiveCall({
+          ...callState,
+          startTime: new Date(callState.startTime)
+        });
+        
+        // Calculate duration from persisted start time
+        const elapsed = Math.floor((new Date().getTime() - new Date(callState.startTime).getTime()) / 1000);
+        setCallDuration(elapsed);
+        
+        console.log('📞 [UnifiedDialer] Restored active call from storage:', callState);
+      } catch (error) {
+        console.error('Failed to restore active call state:', error);
+        sessionStorage.removeItem(ACTIVE_CALL_STORAGE_KEY);
+      }
+    }
+  }, []);
+
+  // Persist call state whenever activeCall changes
+  useEffect(() => {
+    if (activeCall) {
+      const callState: ActiveCallState = {
+        ...activeCall,
+        startTime: activeCall.startTime.toISOString()
+      };
+      sessionStorage.setItem(ACTIVE_CALL_STORAGE_KEY, JSON.stringify(callState));
+    } else {
+      sessionStorage.removeItem(ACTIVE_CALL_STORAGE_KEY);
+    }
+  }, [activeCall]);
 
   // Set initial data when component receives it
   useEffect(() => {
