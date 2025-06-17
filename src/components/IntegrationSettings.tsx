@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -50,7 +51,6 @@ const IntegrationSettings = () => {
   const handleTestFreePBXConnection = async () => {
     setFreepbxConnectionStatus('testing');
     
-    // Test the actual REST API endpoint
     try {
       const response = await fetch(`http://${freepbxConfig.host}:${freepbxConfig.port}/admin/api/api/channels`, {
         method: 'GET',
