@@ -1,9 +1,7 @@
-
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import EmailJSConfigCard from "@/components/integration/EmailJSConfigCard";
-import AsteriskAMICard from "@/components/integration/AsteriskAMICard";
 import AMIBridgeCard from "@/components/integration/AMIBridgeCard";
 import DiscordWebhookCard from "@/components/integration/DiscordWebhookCard";
 import FreePBXAPICard from "@/components/integration/FreePBXAPICard";
@@ -57,7 +55,6 @@ const IntegrationSettings = () => {
 
   const handleTestFreePBXConnection = async () => {
     setFreepbxConnectionStatus('testing');
-    // Simulate connection test
     setTimeout(() => {
       setFreepbxConnectionStatus('disconnected');
     }, 2000);
@@ -65,7 +62,6 @@ const IntegrationSettings = () => {
 
   const handleTestSMTPConnection = async () => {
     setSmtpConnectionStatus('testing');
-    // Simulate connection test
     setTimeout(() => {
       setSmtpConnectionStatus('disconnected');
     }, 2000);
@@ -74,7 +70,6 @@ const IntegrationSettings = () => {
 
   const handleTestDatabaseConnection = () => {
     setDatabaseConnectionStatus('testing');
-    // Simulate connection test
     setTimeout(() => {
       setDatabaseConnectionStatus('disconnected');
     }, 2000);
@@ -149,11 +144,6 @@ const IntegrationSettings = () => {
         </TabsList>
 
         <TabsContent value="telephony" className="space-y-4">
-          <AsteriskAMICard 
-            connectionStatus={amiConnectionStatus}
-            onTestConnection={handleTestAMIConnection}
-            onConnectionStatusChange={setAmiConnectionStatus}
-          />
           <AMIBridgeCard 
             connectionStatus={amiConnectionStatus}
             onTestConnection={handleTestAMIConnection}

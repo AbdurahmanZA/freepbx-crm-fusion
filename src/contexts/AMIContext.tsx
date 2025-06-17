@@ -64,10 +64,10 @@ export const AMIProvider: React.FC<AMIProviderProps> = ({ children }) => {
   const [reconnectAttempts, setReconnectAttempts] = useState(0);
   const [isUserLoggedIn, setIsUserLoggedIn] = useState(false);
   const [reconnectTimeout, setReconnectTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [lastConnectionAttempt, setLastConnectionAttempt] = useState<number>(0);
   
-  const maxReconnectAttempts = 5;
+  const maxReconnectAttempts = 10; // Increased from 5
   
-  // Updated configuration for AMI Bridge to FreePBX using admin credentials
   const [config, setConfig] = useState<AMIConfig>({
     host: '192.168.0.5',
     port: '5038',
@@ -75,48 +75,45 @@ export const AMIProvider: React.FC<AMIProviderProps> = ({ children }) => {
     password: 'amp111'
   });
 
-  // Fix user extension assignment - use stored extension or default to 1000
   const userExtension = localStorage.getItem('user_extension') || '1000';
 
-  // Monitor user login status
+  // Monitor user login status with improved detection
   useEffect(() => {
     const checkLoginStatus = () => {
       const user = localStorage.getItem('crm_user');
       const isLoggedIn = !!user;
       
       if (isLoggedIn !== isUserLoggedIn) {
+        console.log(`[AMI Context] Login status changed: ${isLoggedIn}`);
         setIsUserLoggedIn(isLoggedIn);
         
         if (!isLoggedIn) {
-          // User logged out - disconnect AMI
           console.log('[AMI Context] User logged out, disconnecting AMI');
           disconnect();
         } else if (isLoggedIn && !isConnected && !isConnecting) {
-          // User logged in - auto-connect
           console.log('[AMI Context] User logged in, auto-connecting AMI');
-          connect();
+          // Small delay to ensure UI is ready
+          setTimeout(() => connect(), 1000);
         }
       }
     };
 
-    // Check immediately
     checkLoginStatus();
-    
-    // Poll for login status changes
-    const interval = setInterval(checkLoginStatus, 1000);
+    const interval = setInterval(checkLoginStatus, 2000);
     
     return () => clearInterval(interval);
   }, [isUserLoggedIn, isConnected, isConnecting]);
 
-  // Auto-reconnect logic
+  // Improved auto-reconnect logic
   const scheduleReconnect = () => {
     if (reconnectTimeout) {
       clearTimeout(reconnectTimeout);
+      setReconnectTimeout(null);
     }
 
     if (reconnectAttempts >= maxReconnectAttempts) {
-      console.log('[AMI Context] Max reconnection attempts reached');
-      setConnectionError(`Failed to reconnect after ${maxReconnectAttempts} attempts. Please check the AMI Bridge server.`);
+      console.log(`[AMI Context] Max reconnection attempts (${maxReconnectAttempts}) reached`);
+      setConnectionError(`Failed to reconnect after ${maxReconnectAttempts} attempts. Please check AMI Bridge server.`);
       return;
     }
 
@@ -125,12 +122,19 @@ export const AMIProvider: React.FC<AMIProviderProps> = ({ children }) => {
       return;
     }
 
-    const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000); // Exponential backoff, max 30s
-    console.log(`[AMI Context] Scheduling reconnect attempt ${reconnectAttempts + 1} in ${delay}ms`);
+    // Prevent too frequent connection attempts
+    const timeSinceLastAttempt = Date.now() - lastConnectionAttempt;
+    if (timeSinceLastAttempt < 5000) {
+      console.log('[AMI Context] Too soon since last attempt, delaying reconnect');
+    }
+
+    const delay = Math.min(2000 * Math.pow(1.5, reconnectAttempts), 30000); // Improved backoff
+    console.log(`[AMI Context] Scheduling reconnect attempt ${reconnectAttempts + 1}/${maxReconnectAttempts} in ${delay}ms`);
     
     const timeout = setTimeout(async () => {
       if (isUserLoggedIn && !isConnected && !isConnecting) {
         setReconnectAttempts(prev => prev + 1);
+        setLastConnectionAttempt(Date.now());
         const success = await connect();
         if (!success) {
           scheduleReconnect();
@@ -142,13 +146,11 @@ export const AMIProvider: React.FC<AMIProviderProps> = ({ children }) => {
   };
 
   useEffect(() => {
-    // Set up event listeners for AMI bridge
     const handleEvent = (event: AMIEvent) => {
       setLastEvent(event);
       
-      // Track call-related events
       if (event.event && ['Newchannel', 'Hangup', 'DialBegin', 'DialEnd', 'Bridge'].includes(event.event)) {
-        setCallEvents(prev => [event, ...prev.slice(0, 9)]); // Keep last 10 events
+        setCallEvents(prev => [event, ...prev.slice(0, 9)]);
       }
     };
 
@@ -163,10 +165,11 @@ export const AMIProvider: React.FC<AMIProviderProps> = ({ children }) => {
           clearTimeout(reconnectTimeout);
           setReconnectTimeout(null);
         }
+        console.log('[AMI Context] Successfully connected to AMI Bridge');
       } else if (!connected && isConnected && isUserLoggedIn) {
         setIsConnected(false);
-        setConnectionError('Bridge connection lost');
-        // Schedule reconnection
+        setConnectionError('AMI Bridge connection lost');
+        console.log('[AMI Context] Connection lost, scheduling reconnect');
         scheduleReconnect();
       }
     };
@@ -193,11 +196,17 @@ export const AMIProvider: React.FC<AMIProviderProps> = ({ children }) => {
       return false;
     }
 
+    if (isConnecting) {
+      console.log('[AMI Context] Connection already in progress');
+      return false;
+    }
+
     setIsConnecting(true);
     setConnectionError(null);
+    setLastConnectionAttempt(Date.now());
     
     try {
-      console.log('[AMI Context] Connecting to AMI Bridge with admin credentials:', {
+      console.log('[AMI Context] Connecting to AMI Bridge:', {
         serverUrl: 'http://192.168.0.5:3001',
         amiHost: config.host,
         amiPort: config.port,
@@ -211,9 +220,9 @@ export const AMIProvider: React.FC<AMIProviderProps> = ({ children }) => {
         setIsConnected(true);
         setConnectionError(null);
         setReconnectAttempts(0);
-        console.log('[AMI Context] Successfully connected to AMI Bridge with admin credentials');
+        console.log('[AMI Context] Successfully connected to AMI Bridge');
       } else {
-        setConnectionError('Failed to connect to AMI Bridge at 192.168.0.5:3001');
+        throw new Error('AMI Bridge connection failed');
       }
       
       return success;
@@ -230,7 +239,6 @@ export const AMIProvider: React.FC<AMIProviderProps> = ({ children }) => {
 
   const disconnect = async (): Promise<boolean> => {
     try {
-      // Clear any pending reconnect attempts
       if (reconnectTimeout) {
         clearTimeout(reconnectTimeout);
         setReconnectTimeout(null);
@@ -243,6 +251,7 @@ export const AMIProvider: React.FC<AMIProviderProps> = ({ children }) => {
       setLastEvent(null);
       setPendingCall(null);
       setReconnectAttempts(0);
+      console.log('[AMI Context] Disconnected from AMI Bridge');
       return success;
     } catch (error) {
       console.error('Disconnect error:', error);
@@ -253,6 +262,10 @@ export const AMIProvider: React.FC<AMIProviderProps> = ({ children }) => {
   const resetReconnectAttempts = () => {
     setReconnectAttempts(0);
     setConnectionError(null);
+    if (reconnectTimeout) {
+      clearTimeout(reconnectTimeout);
+      setReconnectTimeout(null);
+    }
   };
 
   const originateCall = async (
