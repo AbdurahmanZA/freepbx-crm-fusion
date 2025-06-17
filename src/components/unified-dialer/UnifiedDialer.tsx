@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -36,6 +37,14 @@ interface ActiveCallState {
   status: "ringing" | "connected" | "on-hold" | "ended";
 }
 
+interface StoredCallState {
+  id: string;
+  leadName: string;
+  phone: string;
+  startTime: string; // ISO string for storage
+  status: "ringing" | "connected" | "on-hold" | "ended";
+}
+
 const ACTIVE_CALL_STORAGE_KEY = 'unified_dialer_active_call';
 
 const UnifiedDialer: React.FC<UnifiedDialerProps> = ({ 
@@ -50,13 +59,7 @@ const UnifiedDialer: React.FC<UnifiedDialerProps> = ({
   const [phoneNumber, setPhoneNumber] = useState("");
   const [contactName, setContactName] = useState("");
   const [contactEmail, setContactEmail] = useState("");
-  const [activeCall, setActiveCall] = useState<{
-    id: string;
-    leadName: string;
-    phone: string;
-    startTime: Date;
-    status: "ringing" | "connected" | "on-hold" | "ended";
-  } | null>(null);
+  const [activeCall, setActiveCall] = useState<ActiveCallState | null>(null);
   const [callDuration, setCallDuration] = useState(0);
 
   // Load persisted call state on component mount
@@ -64,7 +67,7 @@ const UnifiedDialer: React.FC<UnifiedDialerProps> = ({
     const persistedCall = sessionStorage.getItem(ACTIVE_CALL_STORAGE_KEY);
     if (persistedCall) {
       try {
-        const callState: ActiveCallState = JSON.parse(persistedCall);
+        const callState: StoredCallState = JSON.parse(persistedCall);
         const callAge = Date.now() - new Date(callState.startTime).getTime();
         
         // Clear old call states (older than 5 minutes)
@@ -92,7 +95,7 @@ const UnifiedDialer: React.FC<UnifiedDialerProps> = ({
   // Persist call state whenever activeCall changes
   useEffect(() => {
     if (activeCall && activeCall.status !== 'ended') {
-      const callState: ActiveCallState = {
+      const callState: StoredCallState = {
         ...activeCall,
         startTime: activeCall.startTime.toISOString()
       };
@@ -303,12 +306,12 @@ const UnifiedDialer: React.FC<UnifiedDialerProps> = ({
       );
 
       if (success) {
-        const newCall = {
+        const newCall: ActiveCallState = {
           id: `call_${Date.now()}`,
           leadName: contactName || "Unknown Contact",
           phone: phoneNumber,
           startTime: new Date(),
-          status: 'ringing' as const
+          status: 'ringing'
         };
 
         setActiveCall(newCall);
