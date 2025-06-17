@@ -6,6 +6,7 @@ import { TrendingUp, Users, Phone, Target } from "lucide-react";
 import CallCenter from "@/components/CallCenter";
 import ReportsAnalytics from "@/components/ReportsAnalytics";
 import UserManagement from "@/components/UserManagement";
+import LeadManagement from "@/components/LeadManagement";
 import { useAuth } from "@/contexts/AuthContext";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
@@ -72,22 +73,6 @@ const Dashboard = () => {
   );
 };
 
-// Simple Lead Management component
-const LeadManagement = ({ setDialerInitialData }: { setDialerInitialData: (data: any) => void }) => {
-  return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Lead Management</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground">Lead management functionality will be implemented here.</p>
-        </CardContent>
-      </Card>
-    </div>
-  );
-};
-
 // Simple Integrations component
 const Integrations = () => {
   return (
@@ -127,10 +112,20 @@ const Index: React.FC = () => {
       setActiveTab("user-management");
     };
 
+    const handleOpenDialerForLead = (event: CustomEvent) => {
+      setDialerInitialData({
+        phone: event.detail.phone,
+        name: event.detail.name,
+        email: event.detail.email,
+      });
+    };
+
     window.addEventListener("openUserManagement", handleOpenUserManagement);
+    window.addEventListener("openDialerForLead", handleOpenDialerForLead as EventListener);
 
     return () => {
       window.removeEventListener("openUserManagement", handleOpenUserManagement);
+      window.removeEventListener("openDialerForLead", handleOpenDialerForLead as EventListener);
     };
   }, []);
 
@@ -182,7 +177,7 @@ const Index: React.FC = () => {
                 <Dashboard />
               </TabsContent>
               <TabsContent value="leads" className="space-y-4">
-                <LeadManagement setDialerInitialData={setDialerInitialData} />
+                <LeadManagement />
               </TabsContent>
               <TabsContent value="call-center" className="space-y-4">
                 <CallCenter userRole={user?.role || "Agent"} />
