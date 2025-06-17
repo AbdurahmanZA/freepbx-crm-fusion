@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AMIProvider } from "@/contexts/AMIContext";
+import { FreePBXProvider } from "@/contexts/FreePBXContext";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import LoginForm from "@/components/auth/LoginForm";
 import Header from "@/components/layout/Header";
@@ -48,11 +49,13 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <AuthProvider>
-        <AMIProvider>
-          <AppRoutes />
-          <Toaster />
-          <Sonner />
-        </AMIProvider>
+        <FreePBXProvider>
+          <AMIProvider>
+            <AppRoutes />
+            <Toaster />
+            <Sonner />
+          </AMIProvider>
+        </FreePBXProvider>
       </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>
