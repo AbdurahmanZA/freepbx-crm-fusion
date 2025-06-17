@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,54 +15,54 @@ const Dashboard = () => {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card>
+        <Card className="bg-card border-border">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Total Calls</p>
-                <p className="text-2xl font-bold">1,234</p>
+                <p className="text-2xl font-bold text-card-foreground">1,234</p>
                 <p className="text-xs text-green-600">+12% from last week</p>
               </div>
-              <Phone className="h-8 w-8 text-blue-600" />
+              <Phone className="h-8 w-8 text-primary" />
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="bg-card border-border">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Active Leads</p>
-                <p className="text-2xl font-bold">856</p>
+                <p className="text-2xl font-bold text-card-foreground">856</p>
                 <p className="text-xs text-green-600">+8% from last week</p>
               </div>
-              <Users className="h-8 w-8 text-green-600" />
+              <Users className="h-8 w-8 text-accent" />
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="bg-card border-border">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Conversion Rate</p>
-                <p className="text-2xl font-bold">12.5%</p>
+                <p className="text-2xl font-bold text-card-foreground">12.5%</p>
                 <p className="text-xs text-red-600">-2% from last week</p>
               </div>
-              <Target className="h-8 w-8 text-purple-600" />
+              <Target className="h-8 w-8 text-primary" />
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="bg-card border-border">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Revenue</p>
-                <p className="text-2xl font-bold">$45.2K</p>
+                <p className="text-2xl font-bold text-card-foreground">$45.2K</p>
                 <p className="text-xs text-green-600">+18% from last week</p>
               </div>
-              <TrendingUp className="h-8 w-8 text-orange-600" />
+              <TrendingUp className="h-8 w-8 text-accent" />
             </div>
           </CardContent>
         </Card>
@@ -74,9 +75,9 @@ const Dashboard = () => {
 const Integrations = () => {
   return (
     <div className="space-y-6">
-      <Card>
+      <Card className="bg-card border-border">
         <CardHeader>
-          <CardTitle>Integrations</CardTitle>
+          <CardTitle className="text-card-foreground">Integrations</CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-muted-foreground">Integration settings and configurations will be shown here.</p>
@@ -153,37 +154,37 @@ const Index: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen w-full">
-      <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+    <div className="min-h-screen w-full bg-background text-foreground">
+      <div className="flex-1 space-y-4 p-4 md:p-8 pt-6 bg-background">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 lg:grid-cols-6">
-            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-            <TabsTrigger value="leads">Lead Management</TabsTrigger>
-            <TabsTrigger value="call-center">Call Center</TabsTrigger>
-            <TabsTrigger value="reports">Reports</TabsTrigger>
-            <TabsTrigger value="integrations">Integrations</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-2 lg:grid-cols-6 bg-muted border-border">
+            <TabsTrigger value="dashboard" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Dashboard</TabsTrigger>
+            <TabsTrigger value="leads" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Lead Management</TabsTrigger>
+            <TabsTrigger value="call-center" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Call Center</TabsTrigger>
+            <TabsTrigger value="reports" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Reports</TabsTrigger>
+            <TabsTrigger value="integrations" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">Integrations</TabsTrigger>
             {(user?.role === "Manager" || user?.role === "Administrator") && (
-              <TabsTrigger value="user-management">User Management</TabsTrigger>
+              <TabsTrigger value="user-management" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">User Management</TabsTrigger>
             )}
           </TabsList>
 
-          <TabsContent value="dashboard" className="space-y-4">
+          <TabsContent value="dashboard" className="space-y-4 bg-background">
             <Dashboard />
           </TabsContent>
-          <TabsContent value="leads" className="space-y-4">
+          <TabsContent value="leads" className="space-y-4 bg-background">
             <LeadManagement />
           </TabsContent>
-          <TabsContent value="call-center" className="space-y-4">
+          <TabsContent value="call-center" className="space-y-4 bg-background">
             <CallCenter userRole={user?.role || "Agent"} />
           </TabsContent>
-          <TabsContent value="reports" className="space-y-4">
+          <TabsContent value="reports" className="space-y-4 bg-background">
             <ReportsAnalytics userRole={user?.role || "Agent"} />
           </TabsContent>
-          <TabsContent value="integrations" className="space-y-4">
+          <TabsContent value="integrations" className="space-y-4 bg-background">
             <Integrations />
           </TabsContent>
           {(user?.role === "Manager" || user?.role === "Administrator") && (
-            <TabsContent value="user-management" className="space-y-4">
+            <TabsContent value="user-management" className="space-y-4 bg-background">
               <UserManagement />
             </TabsContent>
           )}
