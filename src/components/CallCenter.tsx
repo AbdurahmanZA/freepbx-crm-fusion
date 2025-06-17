@@ -33,6 +33,8 @@ const CallCenter = ({ userRole }: CallCenterProps) => {
       const emailLogs = simpleEmailService.getEmailLogs();
       const leads = JSON.parse(localStorage.getItem('leads') || '[]');
 
+      console.log('[CallCenter] Loading call history:', rawRecords.length, 'records');
+
       const enhancedRecords: EnhancedCallRecord[] = rawRecords.map(record => {
         // Find matching lead
         const lead = leads.find((l: any) => 
@@ -60,6 +62,7 @@ const CallCenter = ({ userRole }: CallCenterProps) => {
       });
 
       setCallHistory(enhancedRecords);
+      console.log('[CallCenter] Enhanced call history loaded:', enhancedRecords.length, 'records');
     } catch (error) {
       console.error('Error loading enhanced call history:', error);
     } finally {
@@ -70,11 +73,22 @@ const CallCenter = ({ userRole }: CallCenterProps) => {
   // Subscribe to call records service and reload enhanced data
   useEffect(() => {
     const unsubscribe = callRecordsService.subscribe(() => {
+      console.log('[CallCenter] Call records updated, refreshing display');
       loadEnhancedCallHistory();
     });
 
     loadEnhancedCallHistory();
     return unsubscribe;
+  }, []);
+
+  // Auto-refresh every 30 seconds to catch any missed updates
+  useEffect(() => {
+    const interval = setInterval(() => {
+      console.log('[CallCenter] Auto-refreshing call history');
+      loadEnhancedCallHistory();
+    }, 30000);
+
+    return () => clearInterval(interval);
   }, []);
 
   // Display AMI connection status and user extension info
@@ -96,6 +110,9 @@ const CallCenter = ({ userRole }: CallCenterProps) => {
             </span>
             <span className="ml-4 text-blue-700">
               AMI: {isConnected ? '🟢 Connected' : '🔴 Disconnected'}
+            </span>
+            <span className="ml-4 text-blue-600">
+              Records: {callHistory.length}
             </span>
           </div>
           <Button 

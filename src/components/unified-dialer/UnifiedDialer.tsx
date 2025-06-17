@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -33,7 +32,7 @@ interface ActiveCallState {
   id: string;
   leadName: string;
   phone: string;
-  startTime: string;
+  startTime: Date;
   status: "ringing" | "connected" | "on-hold" | "ended";
 }
 
@@ -139,7 +138,7 @@ const UnifiedDialer: React.FC<UnifiedDialerProps> = ({
     }
   }, [phoneNumber, initialData.name]);
 
-  // Monitor AMI events for call status updates
+  // Monitor AMI events for call status updates with improved hangup detection
   useEffect(() => {
     if (!lastEvent || !activeCall) return;
 
@@ -148,16 +147,24 @@ const UnifiedDialer: React.FC<UnifiedDialerProps> = ({
 
     console.log('📞 [UnifiedDialer] Processing AMI event:', lastEvent);
 
-    // Enhanced event filtering
-    const isUserRelated = lastEvent.channel?.includes(`PJSIP/${userExtension}`) ||
-                         lastEvent.destchannel?.includes(`PJSIP/${userExtension}`) ||
-                         lastEvent.calleridnum === userExtension ||
-                         lastEvent.connectedlinenum === activeCall.phone ||
-                         lastEvent.calleridnum === activeCall.phone ||
-                         (lastEvent.calleridnum && activeCall.phone.includes(lastEvent.calleridnum.slice(-4))) ||
-                         (lastEvent.connectedlinenum && activeCall.phone.includes(lastEvent.connectedlinenum.slice(-4)));
+    // Improved event filtering - check multiple fields for user/call relationship
+    const isUserRelated = 
+      lastEvent.channel?.includes(`PJSIP/${userExtension}`) ||
+      lastEvent.destchannel?.includes(`PJSIP/${userExtension}`) ||
+      lastEvent.calleridnum === userExtension ||
+      lastEvent.connectedlinenum === activeCall.phone ||
+      lastEvent.calleridnum === activeCall.phone ||
+      (lastEvent.calleridnum && activeCall.phone.includes(lastEvent.calleridnum.slice(-4))) ||
+      (lastEvent.connectedlinenum && activeCall.phone.includes(lastEvent.connectedlinenum.slice(-4))) ||
+      (lastEvent.uniqueid && activeCall.id.includes(lastEvent.uniqueid)) ||
+      // Check for any channel that contains our extension
+      (lastEvent.channel && lastEvent.channel.includes(userExtension)) ||
+      (lastEvent.destchannel && lastEvent.destchannel.includes(userExtension));
 
-    if (!isUserRelated) return;
+    if (!isUserRelated) {
+      console.log('📞 [UnifiedDialer] Event not related to user/call, ignoring');
+      return;
+    }
 
     let newStatus = activeCall.status;
     let shouldUpdate = false;
@@ -185,12 +192,26 @@ const UnifiedDialer: React.FC<UnifiedDialerProps> = ({
         break;
 
       case 'Bridge':
-        newStatus = 'connected';
-        shouldUpdate = true;
+        if (activeCall.status !== 'connected') {
+          newStatus = 'connected';
+          shouldUpdate = true;
+        }
         break;
 
       case 'Hangup':
-        console.log('📞 [UnifiedDialer] Hangup event - ending call');
+        console.log('📞 [UnifiedDialer] Hangup event detected - ending call');
+        newStatus = 'ended';
+        shouldUpdate = true;
+        setTimeout(() => {
+          setActiveCall(null);
+          setCallDuration(0);
+        }, 2000);
+        break;
+
+      // Additional hangup scenarios
+      case 'SoftHangupRequest':
+      case 'HangupRequest':
+        console.log('📞 [UnifiedDialer] Hangup request - ending call');
         newStatus = 'ended';
         shouldUpdate = true;
         setTimeout(() => {
@@ -292,6 +313,17 @@ const UnifiedDialer: React.FC<UnifiedDialerProps> = ({
 
         setActiveCall(newCall);
         setCallDuration(0);
+        
+        // Dispatch event for AMI call record handler
+        const dialerEvent = new CustomEvent('dialerCallInitiated', {
+          detail: {
+            id: newCall.id,
+            leadName: newCall.leadName,
+            phone: phoneNumber,
+            startTime: newCall.startTime
+          }
+        });
+        window.dispatchEvent(dialerEvent);
         
         onCallInitiated({
           id: newCall.id,
