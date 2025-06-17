@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,7 +9,6 @@ import LeadManagement from "@/components/LeadManagement";
 import { useAuth } from "@/contexts/AuthContext";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
-import UnifiedDialerDrawer from "@/components/unified-dialer/UnifiedDialerDrawer";
 
 // Simple Dashboard component
 const Dashboard = () => {
@@ -101,31 +99,16 @@ interface Lead {
 const Index: React.FC = () => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("dashboard");
-  const [dialerInitialData, setDialerInitialData] = useState<{
-    phone?: string;
-    name?: string;
-    email?: string;
-  }>({});
 
   useEffect(() => {
     const handleOpenUserManagement = () => {
       setActiveTab("user-management");
     };
 
-    const handleOpenDialerForLead = (event: CustomEvent) => {
-      setDialerInitialData({
-        phone: event.detail.phone,
-        name: event.detail.name,
-        email: event.detail.email,
-      });
-    };
-
     window.addEventListener("openUserManagement", handleOpenUserManagement);
-    window.addEventListener("openDialerForLead", handleOpenDialerForLead as EventListener);
 
     return () => {
       window.removeEventListener("openUserManagement", handleOpenUserManagement);
-      window.removeEventListener("openDialerForLead", handleOpenDialerForLead as EventListener);
     };
   }, []);
 
@@ -138,21 +121,7 @@ const Index: React.FC = () => {
     startTime: Date;
     leadId?: string;
   }) => {
-    // Find the lead by phone number
-    const leads = JSON.parse(localStorage.getItem('leads') || '[]');
-    const lead = leads.find((l: Lead) => l.phone === callData.phone);
-
-    // If lead is found, update the dialerInitialData
-    if (lead) {
-      setDialerInitialData({
-        phone: lead.phone,
-        name: lead.name,
-        email: lead.email,
-      });
-    } else {
-      // Clear the dialerInitialData if no lead is found
-      setDialerInitialData({});
-    }
+    console.log("Call initiated:", callData);
   };
 
   return (
@@ -195,12 +164,6 @@ const Index: React.FC = () => {
               )}
             </Tabs>
           </div>
-
-          {/* Unified Dialer Drawer - always available */}
-          <UnifiedDialerDrawer
-            onCallInitiated={handleCallInitiated}
-            initialData={dialerInitialData}
-          />
         </SidebarInset>
       </div>
     </SidebarProvider>
