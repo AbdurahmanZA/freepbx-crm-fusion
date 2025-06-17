@@ -2,7 +2,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Clock, User, Play, Phone } from "lucide-react";
+import { Clock, User, Play, Phone, Mail, FileText, Calendar } from "lucide-react";
 
 interface CallRecord {
   id: number;
@@ -14,13 +14,17 @@ interface CallRecord {
   hasRecording: boolean;
   notes: string;
   agent: string;
+  emailCount?: number;
+  lastEmailSent?: string;
+  leadNotes?: string;
 }
 
 interface CallHistoryProps {
   calls: CallRecord[];
+  showEnhancedInfo?: boolean;
 }
 
-const CallHistory = ({ calls }: CallHistoryProps) => {
+const CallHistory = ({ calls, showEnhancedInfo = false }: CallHistoryProps) => {
   const getOutcomeColor = (outcome: string) => {
     switch (outcome.toLowerCase()) {
       case "qualified": return "bg-green-100 text-green-800";
@@ -31,6 +35,30 @@ const CallHistory = ({ calls }: CallHistoryProps) => {
       case "busy": return "bg-yellow-100 text-yellow-800";
       default: return "bg-yellow-100 text-yellow-800";
     }
+  };
+
+  const formatLastEmailDate = (dateString?: string) => {
+    if (!dateString) return 'Never';
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return `${diffDays} days ago`;
+    return date.toLocaleDateString();
+  };
+
+  const handleCallAgain = (call: CallRecord) => {
+    // Dispatch event to open dialer with lead info
+    const event = new CustomEvent('openDialerForLead', {
+      detail: {
+        phone: call.phone,
+        name: call.leadName,
+        email: '' // Could be enhanced to include email if available
+      }
+    });
+    window.dispatchEvent(event);
   };
 
   if (!calls || calls.length === 0) {
@@ -46,16 +74,28 @@ const CallHistory = ({ calls }: CallHistoryProps) => {
       {calls.map((call) => (
         <Card key={call.id} className="hover:shadow-md transition-shadow">
           <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+            <div className="flex items-start justify-between">
+              <div className="flex items-start gap-4 flex-1">
+                <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
                   <User className="h-5 w-5 text-blue-600" />
                 </div>
-                <div>
-                  <h3 className="font-semibold">{call.leadName}</h3>
-                  <div className="flex items-center gap-4 text-sm text-gray-600 flex-wrap">
-                    <span>{call.phone}</span>
-                    <span>{call.timestamp}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="font-semibold truncate">{call.leadName}</h3>
+                    <Badge className={`text-xs ${getOutcomeColor(call.outcome)}`}>
+                      {call.outcome}
+                    </Badge>
+                  </div>
+                  
+                  <div className="flex items-center gap-4 text-sm text-gray-600 flex-wrap mb-2">
+                    <span className="flex items-center gap-1">
+                      <Phone className="h-3 w-3" />
+                      {call.phone}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Calendar className="h-3 w-3" />
+                      {call.timestamp}
+                    </span>
                     <span className="flex items-center gap-1">
                       <Clock className="h-3 w-3" />
                       {call.duration}
@@ -64,20 +104,57 @@ const CallHistory = ({ calls }: CallHistoryProps) => {
                       by {call.agent}
                     </span>
                   </div>
-                  <Badge className={`mt-1 text-xs ${getOutcomeColor(call.outcome)}`}>
-                    {call.outcome}
-                  </Badge>
-                  <p className="text-sm text-gray-600 mt-2">{call.notes}</p>
+
+                  {/* Enhanced Information */}
+                  {showEnhancedInfo && (
+                    <div className="space-y-2 mb-2">
+                      {/* Email Information */}
+                      <div className="flex items-center gap-2 text-xs">
+                        <Mail className="h-3 w-3 text-blue-500" />
+                        <span className="text-gray-600">
+                          Emails sent: {call.emailCount || 0}
+                        </span>
+                        {call.lastEmailSent && (
+                          <span className="text-gray-500">
+                            • Last: {formatLastEmailDate(call.lastEmailSent)}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Lead Notes */}
+                      {call.leadNotes && (
+                        <div className="flex items-start gap-2 text-xs">
+                          <FileText className="h-3 w-3 text-green-500 mt-0.5 flex-shrink-0" />
+                          <span className="text-gray-700 bg-green-50 p-2 rounded text-xs leading-relaxed">
+                            <strong>Lead Notes:</strong> {call.leadNotes}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Call Notes */}
+                  {call.notes && (
+                    <div className="text-sm text-gray-600 mt-2 bg-gray-50 p-2 rounded">
+                      <strong>Call Notes:</strong> {call.notes}
+                    </div>
+                  )}
                 </div>
               </div>
-              <div className="flex gap-2">
+              
+              <div className="flex gap-2 flex-shrink-0">
                 {call.hasRecording && (
                   <Button size="sm" variant="outline" className="flex items-center gap-1">
                     <Play className="h-3 w-3" />
                     Play
                   </Button>
                 )}
-                <Button size="sm" variant="outline" className="flex items-center gap-1">
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  className="flex items-center gap-1"
+                  onClick={() => handleCallAgain(call)}
+                >
                   <Phone className="h-3 w-3" />
                   Call Again
                 </Button>

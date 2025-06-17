@@ -4,24 +4,76 @@ import { useToast } from "@/hooks/use-toast";
 import { useAMIContext } from "@/contexts/AMIContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { callRecordsService, CallRecord } from "@/services/callRecordsService";
+import { simpleEmailService } from "@/services/simpleEmailService";
 import CallHistory from "./call-center/CallHistory";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface CallCenterProps {
   userRole: string;
 }
 
+interface EnhancedCallRecord extends CallRecord {
+  emailCount?: number;
+  lastEmailSent?: string;
+  leadNotes?: string;
+}
+
 const CallCenter = ({ userRole }: CallCenterProps) => {
   const { user } = useAuth();
   const { isConnected, userExtension } = useAMIContext();
-  const [callHistory, setCallHistory] = useState<CallRecord[]>([]);
+  const [callHistory, setCallHistory] = useState<EnhancedCallRecord[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  // Subscribe to call records service
+  const loadEnhancedCallHistory = () => {
+    setLoading(true);
+    try {
+      const rawRecords = callRecordsService.getRecords().slice(0, 20);
+      const emailLogs = simpleEmailService.getEmailLogs();
+      const leads = JSON.parse(localStorage.getItem('leads') || '[]');
+
+      const enhancedRecords: EnhancedCallRecord[] = rawRecords.map(record => {
+        // Find matching lead
+        const lead = leads.find((l: any) => 
+          l.phone === record.phone || 
+          l.name === record.leadName ||
+          l.id === record.leadId
+        );
+
+        // Find emails sent to this contact
+        const contactEmails = emailLogs.filter(email => 
+          email.to === lead?.email || 
+          email.leadId === lead?.id ||
+          email.phone === record.phone
+        );
+
+        const lastEmail = contactEmails.length > 0 ? 
+          contactEmails[0].dateSent : undefined;
+
+        return {
+          ...record,
+          emailCount: contactEmails.length,
+          lastEmailSent: lastEmail,
+          leadNotes: lead?.notes || ''
+        };
+      });
+
+      setCallHistory(enhancedRecords);
+    } catch (error) {
+      console.error('Error loading enhanced call history:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Subscribe to call records service and reload enhanced data
   useEffect(() => {
-    const unsubscribe = callRecordsService.subscribe((records) => {
-      setCallHistory(records.slice(0, 10));
+    const unsubscribe = callRecordsService.subscribe(() => {
+      loadEnhancedCallHistory();
     });
 
-    setCallHistory(callRecordsService.getRecords().slice(0, 10));
+    loadEnhancedCallHistory();
     return unsubscribe;
   }, []);
 
@@ -46,13 +98,27 @@ const CallCenter = ({ userRole }: CallCenterProps) => {
               AMI: {isConnected ? '🟢 Connected' : '🔴 Disconnected'}
             </span>
           </div>
+          <Button 
+            size="sm" 
+            variant="outline" 
+            onClick={loadEnhancedCallHistory}
+            disabled={loading}
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
         </div>
       </div>
 
-      {/* Call History */}
-      <div className="w-full">
-        <CallHistory calls={callHistory} />
-      </div>
+      {/* Enhanced Call History */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent Call Activity & Lead Information</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <CallHistory calls={callHistory} showEnhancedInfo={true} />
+        </CardContent>
+      </Card>
 
       {/* Note: Unified dialer is now global and handled in Index.tsx */}
       <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center text-gray-600">
