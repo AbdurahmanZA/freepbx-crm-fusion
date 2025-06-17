@@ -7,6 +7,7 @@ import CallCenter from "@/components/CallCenter";
 import ReportsAnalytics from "@/components/ReportsAnalytics";
 import UserManagement from "@/components/UserManagement";
 import LeadManagement from "@/components/LeadManagement";
+import IntegrationSettings from "@/components/IntegrationSettings";
 import { useAuth } from "@/contexts/AuthContext";
 import UnifiedDialerDrawer from "@/components/unified-dialer/UnifiedDialerDrawer";
 
@@ -67,22 +68,6 @@ const Dashboard = () => {
           </CardContent>
         </Card>
       </div>
-    </div>
-  );
-};
-
-// Simple Integrations component
-const Integrations = () => {
-  return (
-    <div className="space-y-6">
-      <Card className="bg-card border-border">
-        <CardHeader>
-          <CardTitle className="text-card-foreground">Integrations</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground">Integration settings and configurations will be shown here.</p>
-        </CardContent>
-      </Card>
     </div>
   );
 };
@@ -181,7 +166,7 @@ const Index: React.FC = () => {
             <ReportsAnalytics userRole={user?.role || "Agent"} />
           </TabsContent>
           <TabsContent value="integrations" className="space-y-4 bg-background">
-            <Integrations />
+            <IntegrationSettings />
           </TabsContent>
           {(user?.role === "Manager" || user?.role === "Administrator") && (
             <TabsContent value="user-management" className="space-y-4 bg-background">
