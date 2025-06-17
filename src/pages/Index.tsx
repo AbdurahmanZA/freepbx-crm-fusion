@@ -7,8 +7,7 @@ import ReportsAnalytics from "@/components/ReportsAnalytics";
 import UserManagement from "@/components/UserManagement";
 import LeadManagement from "@/components/LeadManagement";
 import { useAuth } from "@/contexts/AuthContext";
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/AppSidebar";
+import UnifiedDialerDrawer from "@/components/unified-dialer/UnifiedDialerDrawer";
 
 // Simple Dashboard component
 const Dashboard = () => {
@@ -99,16 +98,31 @@ interface Lead {
 const Index: React.FC = () => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("dashboard");
+  const [dialerInitialData, setDialerInitialData] = useState<{
+    phone?: string;
+    name?: string;
+    email?: string;
+  }>({});
 
   useEffect(() => {
     const handleOpenUserManagement = () => {
       setActiveTab("user-management");
     };
 
+    const handleOpenDialerForLead = (event: CustomEvent) => {
+      setDialerInitialData({
+        phone: event.detail.phone,
+        name: event.detail.name,
+        email: event.detail.email,
+      });
+    };
+
     window.addEventListener("openUserManagement", handleOpenUserManagement);
+    window.addEventListener("openDialerForLead", handleOpenDialerForLead as EventListener);
 
     return () => {
       window.removeEventListener("openUserManagement", handleOpenUserManagement);
+      window.removeEventListener("openDialerForLead", handleOpenDialerForLead as EventListener);
     };
   }, []);
 
@@ -121,52 +135,67 @@ const Index: React.FC = () => {
     startTime: Date;
     leadId?: string;
   }) => {
-    console.log("Call initiated:", callData);
+    // Find the lead by phone number
+    const leads = JSON.parse(localStorage.getItem('leads') || '[]');
+    const lead = leads.find((l: Lead) => l.phone === callData.phone);
+
+    // If lead is found, update the dialerInitialData
+    if (lead) {
+      setDialerInitialData({
+        phone: lead.phone,
+        name: lead.name,
+        email: lead.email,
+      });
+    } else {
+      // Clear the dialerInitialData if no lead is found
+      setDialerInitialData({});
+    }
   };
 
   return (
-    <SidebarProvider>
-      <div className="min-h-screen flex w-full">
-        <AppSidebar onCallInitiated={handleCallInitiated} />
-        <SidebarInset className="flex-1">
-          <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-2 lg:grid-cols-6">
-                <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-                <TabsTrigger value="leads">Lead Management</TabsTrigger>
-                <TabsTrigger value="call-center">Call Center</TabsTrigger>
-                <TabsTrigger value="reports">Reports</TabsTrigger>
-                <TabsTrigger value="integrations">Integrations</TabsTrigger>
-                {(user?.role === "Manager" || user?.role === "Administrator") && (
-                  <TabsTrigger value="user-management">User Management</TabsTrigger>
-                )}
-              </TabsList>
+    <div className="min-h-screen w-full">
+      <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-2 lg:grid-cols-6">
+            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+            <TabsTrigger value="leads">Lead Management</TabsTrigger>
+            <TabsTrigger value="call-center">Call Center</TabsTrigger>
+            <TabsTrigger value="reports">Reports</TabsTrigger>
+            <TabsTrigger value="integrations">Integrations</TabsTrigger>
+            {(user?.role === "Manager" || user?.role === "Administrator") && (
+              <TabsTrigger value="user-management">User Management</TabsTrigger>
+            )}
+          </TabsList>
 
-              <TabsContent value="dashboard" className="space-y-4">
-                <Dashboard />
-              </TabsContent>
-              <TabsContent value="leads" className="space-y-4">
-                <LeadManagement />
-              </TabsContent>
-              <TabsContent value="call-center" className="space-y-4">
-                <CallCenter userRole={user?.role || "Agent"} />
-              </TabsContent>
-              <TabsContent value="reports" className="space-y-4">
-                <ReportsAnalytics userRole={user?.role || "Agent"} />
-              </TabsContent>
-              <TabsContent value="integrations" className="space-y-4">
-                <Integrations />
-              </TabsContent>
-              {(user?.role === "Manager" || user?.role === "Administrator") && (
-                <TabsContent value="user-management" className="space-y-4">
-                  <UserManagement />
-                </TabsContent>
-              )}
-            </Tabs>
-          </div>
-        </SidebarInset>
+          <TabsContent value="dashboard" className="space-y-4">
+            <Dashboard />
+          </TabsContent>
+          <TabsContent value="leads" className="space-y-4">
+            <LeadManagement />
+          </TabsContent>
+          <TabsContent value="call-center" className="space-y-4">
+            <CallCenter userRole={user?.role || "Agent"} />
+          </TabsContent>
+          <TabsContent value="reports" className="space-y-4">
+            <ReportsAnalytics userRole={user?.role || "Agent"} />
+          </TabsContent>
+          <TabsContent value="integrations" className="space-y-4">
+            <Integrations />
+          </TabsContent>
+          {(user?.role === "Manager" || user?.role === "Administrator") && (
+            <TabsContent value="user-management" className="space-y-4">
+              <UserManagement />
+            </TabsContent>
+          )}
+        </Tabs>
       </div>
-    </SidebarProvider>
+
+      {/* Unified Dialer Drawer - always available */}
+      <UnifiedDialerDrawer
+        onCallInitiated={handleCallInitiated}
+        initialData={dialerInitialData}
+      />
+    </div>
   );
 };
 
