@@ -1,13 +1,26 @@
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { LogOut, User, Users } from "lucide-react";
+import { LogOut, User, Users, Bell, BellOff } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAMIContext } from "@/contexts/AMIContext";
+import { useState, useEffect } from "react";
 
 const Header = () => {
   const { user, logout } = useAuth();
   const { isConnected } = useAMIContext();
+  const [notificationsMuted, setNotificationsMuted] = useState(false);
+
+  useEffect(() => {
+    const muted = localStorage.getItem('notifications_muted') === 'true';
+    setNotificationsMuted(muted);
+  }, []);
+
+  const toggleNotifications = () => {
+    const newMutedState = !notificationsMuted;
+    setNotificationsMuted(newMutedState);
+    localStorage.setItem('notifications_muted', newMutedState.toString());
+  };
 
   if (!user) return null;
 
@@ -36,6 +49,20 @@ const Header = () => {
           </div>
           
           <div className="flex items-center space-x-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={toggleNotifications}
+              className="flex items-center gap-2"
+              title={notificationsMuted ? "Enable notifications" : "Disable notifications"}
+            >
+              {notificationsMuted ? (
+                <BellOff className="h-4 w-4" />
+              ) : (
+                <Bell className="h-4 w-4" />
+              )}
+            </Button>
+            
             <div className="flex items-center space-x-2">
               <User className="h-4 w-4" />
               <span className="text-sm font-medium">{user.name}</span>

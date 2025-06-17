@@ -1,3 +1,4 @@
+
 import * as React from "react"
 
 import type {
@@ -139,7 +140,21 @@ function dispatch(action: Action) {
 
 type Toast = Omit<ToasterToast, "id">
 
+// Check if notifications are muted
+const isNotificationsMuted = () => {
+  return localStorage.getItem('notifications_muted') === 'true'
+}
+
 function toast({ ...props }: Toast) {
+  // Don't show toast if notifications are muted
+  if (isNotificationsMuted()) {
+    return {
+      id: '',
+      dismiss: () => {},
+      update: () => {}
+    }
+  }
+
   const id = genId()
 
   const update = (props: ToasterToast) =>
