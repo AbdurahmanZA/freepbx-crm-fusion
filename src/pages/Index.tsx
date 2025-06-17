@@ -159,7 +159,7 @@ const Index: React.FC = () => {
     <SidebarProvider>
       <div className="min-h-screen flex w-full">
         <AppSidebar onCallInitiated={handleCallInitiated} />
-        <SidebarInset>
+        <SidebarInset className="flex-1">
           <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="grid w-full grid-cols-2 lg:grid-cols-6">
