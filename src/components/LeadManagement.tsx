@@ -293,15 +293,6 @@ const LeadManagement = () => {
   };
 
   const editLead = (lead: Lead) => {
-    // Prevent editing dummy leads
-    if (lead.id.startsWith("lead_dummy_")) {
-      toast({
-        title: "Cannot Edit",
-        description: "Demo leads cannot be edited.",
-        variant: "destructive",
-      });
-      return;
-    }
     setIsEditing(true);
     setCurrentLead(lead);
   };
@@ -318,7 +309,7 @@ const LeadManagement = () => {
 
     if (isEditing) {
       const updatedLeads = leads.map((lead) =>
-        lead.id === currentLead.id ? currentLead : lead
+        lead.id === currentLead.id ? { ...currentLead, updatedAt: new Date().toISOString().split('T')[0] } : lead
       );
       saveLeads(updatedLeads);
       toast({
