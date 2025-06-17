@@ -1,56 +1,35 @@
-
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import Dashboard from "@/components/dashboard/Dashboard";
+import LeadManagement from "@/components/lead-management/LeadManagement";
+import CallCenter from "@/components/call-center/CallCenter";
+import Reports from "@/components/reports/Reports";
+import Integrations from "@/components/integrations/Integrations";
+import UserManagement from "@/components/user-management/UserManagement";
 import { useAuth } from "@/contexts/AuthContext";
-import LeadManagement from "@/components/LeadManagement";
-import CallCenter from "@/components/CallCenter";
-import UserManagement from "@/components/UserManagement";
-import IntegrationSettings from "@/components/IntegrationSettings";
-import ReportsAnalytics from "@/components/ReportsAnalytics";
-import SystemStatus from "@/components/SystemStatus";
-import CallLogs from "@/components/CallLogs";
-import DatabaseViewer from "@/components/DatabaseViewer";
-import ConnectionTest from "@/components/ConnectionTest";
-import UnifiedDialer from "@/components/unified-dialer/UnifiedDialer";
-import KnowledgeBase from "@/components/knowledge-base/KnowledgeBase";
-import CallbackCalendar from "@/components/callback-calendar/CallbackCalendar";
-import SimpleEmailHistory from "@/components/email-history/SimpleEmailHistory";
-import { 
-  Drawer, 
-  DrawerContent, 
-  DrawerHeader, 
-  DrawerTitle,
-  DrawerMiniTab 
-} from "@/components/ui/drawer";
-import { Button } from "@/components/ui/button";
-import { Phone, Mail, FileText } from "lucide-react";
-import CallHistory from "@/components/call-center/CallHistory";
+import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
+import AppSidebar from "@/components/layout/AppSidebar";
+import { Lead } from "@/types";
+import UnifiedDialerDrawer from "@/components/unified-dialer/UnifiedDialerDrawer";
 
-const Index = () => {
+const Index: React.FC = () => {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState("leads");
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [drawerCard, setDrawerCard] = useState<"dialer" | "email" | "callLogs">("dialer");
-  const [dialerData, setDialerData] = useState<{
+  const [activeTab, setActiveTab] = useState("dashboard");
+  const [dialerInitialData, setDialerInitialData] = useState<{
     phone?: string;
     name?: string;
     email?: string;
   }>({});
 
-  const userRole = user?.role || "agent";
-
   useEffect(() => {
-    const handleOpenDialerForLead = (event: CustomEvent) => {
-      const { phone, name, email } = event.detail;
-      setDialerData({ phone, name, email });
-      setDrawerCard("dialer");
-      setDrawerOpen(true);
+    const handleOpenUserManagement = () => {
+      setActiveTab("user-management");
     };
 
-    window.addEventListener('openDialerForLead', handleOpenDialerForLead as EventListener);
-    
+    window.addEventListener("openUserManagement", handleOpenUserManagement);
+
     return () => {
-      window.removeEventListener('openDialerForLead', handleOpenDialerForLead as EventListener);
+      window.removeEventListener("openUserManagement", handleOpenUserManagement);
     };
   }, []);
 
@@ -63,157 +42,72 @@ const Index = () => {
     startTime: Date;
     leadId?: string;
   }) => {
-    console.log(`Call initiated:`, callData);
-  };
+    // Find the lead by phone number
+    const leads = JSON.parse(localStorage.getItem('leads') || '[]');
+    const lead = leads.find((l: Lead) => l.phone === callData.phone);
 
-  const handleTestComplete = (results: { freepbx: boolean; database: boolean }) => {
-    console.log('Connection test completed:', results);
-  };
-
-  const mockCallHistory = [
-    {
-      id: 1,
-      leadName: "John Doe",
-      phone: "+1234567890",
-      duration: "3:45",
-      outcome: "Qualified",
-      timestamp: "2024-01-15 10:30 AM",
-      hasRecording: true,
-      notes: "Interested in premium package",
-      agent: user?.name || "Agent"
-    },
-    {
-      id: 2,
-      leadName: "Jane Smith",
-      phone: "+1987654321",
-      duration: "2:15",
-      outcome: "Callback Scheduled",
-      timestamp: "2024-01-15 09:15 AM",
-      hasRecording: false,
-      notes: "Will call back on Friday",
-      agent: user?.name || "Agent"
+    // If lead is found, update the dialerInitialData
+    if (lead) {
+      setDialerInitialData({
+        phone: lead.phone,
+        name: lead.name,
+        email: lead.email,
+      });
+    } else {
+      // Clear the dialerInitialData if no lead is found
+      setDialerInitialData({});
     }
-  ];
-
-  const tabs = [
-    { id: "leads", label: "Lead Management", component: <LeadManagement /> },
-    { id: "call-center", label: "Call Center", component: <CallCenter userRole={userRole} /> },
-    { id: "callback-calendar", label: "Callback Calendar", component: <CallbackCalendar userRole={userRole} /> },
-    { id: "email-history", label: "Email History", component: <SimpleEmailHistory /> },
-    { id: "call-logs", label: "Call Logs", component: <CallLogs /> },
-    { id: "reports", label: "Reports & Analytics", component: <ReportsAnalytics userRole={userRole} /> },
-    { id: "knowledge-base", label: "Knowledge Base", component: <KnowledgeBase userRole={userRole} /> },
-    { id: "integrations", label: "Integration Settings", component: <IntegrationSettings /> },
-  ];
-
-  const adminTabs = [
-    { id: "users", label: "User Management", component: <UserManagement /> },
-    { id: "system", label: "System Status", component: <SystemStatus /> },
-    { id: "database", label: "Database Viewer", component: <DatabaseViewer /> },
-    { id: "connection", label: "Connection Test", component: <ConnectionTest onTestComplete={handleTestComplete} /> },
-  ];
-
-  const allTabs = userRole === "admin" ? [...tabs, ...adminTabs] : tabs;
+  };
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container mx-auto p-4 space-y-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">FreePBX CRM Dashboard</h1>
-            <p className="text-muted-foreground">
-              Welcome back, {user?.name} ({userRole})
-            </p>
+    <SidebarProvider>
+      <div className="min-h-screen flex w-full">
+        <AppSidebar />
+        <SidebarInset>
+          <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <TabsList className="grid w-full grid-cols-2 lg:grid-cols-6">
+                <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+                <TabsTrigger value="leads">Lead Management</TabsTrigger>
+                <TabsTrigger value="call-center">Call Center</TabsTrigger>
+                <TabsTrigger value="reports">Reports</TabsTrigger>
+                <TabsTrigger value="integrations">Integrations</TabsTrigger>
+                {(user?.role === "Manager" || user?.role === "Administrator") && (
+                  <TabsTrigger value="user-management">User Management</TabsTrigger>
+                )}
+              </TabsList>
+
+              <TabsContent value="dashboard" className="space-y-4">
+                <Dashboard />
+              </TabsContent>
+              <TabsContent value="leads" className="space-y-4">
+                <LeadManagement setDialerInitialData={setDialerInitialData} />
+              </TabsContent>
+              <TabsContent value="call-center" className="space-y-4">
+                <CallCenter setDialerInitialData={setDialerInitialData} />
+              </TabsContent>
+              <TabsContent value="reports" className="space-y-4">
+                <Reports />
+              </TabsContent>
+              <TabsContent value="integrations" className="space-y-4">
+                <Integrations />
+              </TabsContent>
+              {(user?.role === "Manager" || user?.role === "Administrator") && (
+                <TabsContent value="user-management" className="space-y-4">
+                  <UserManagement />
+                </TabsContent>
+              )}
+            </Tabs>
           </div>
-        </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3 lg:grid-cols-4 xl:grid-cols-8 gap-1">
-            {allTabs.map((tab) => (
-              <TabsTrigger
-                key={tab.id}
-                value={tab.id}
-                className="text-xs lg:text-sm whitespace-nowrap"
-              >
-                {tab.label}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-
-          {allTabs.map((tab) => (
-            <TabsContent key={tab.id} value={tab.id} className="mt-6">
-              {tab.component}
-            </TabsContent>
-          ))}
-        </Tabs>
+          {/* Unified Dialer Drawer - always available */}
+          <UnifiedDialerDrawer
+            onCallInitiated={handleCallInitiated}
+            initialData={dialerInitialData}
+          />
+        </SidebarInset>
       </div>
-
-      {!drawerOpen && (
-        <DrawerMiniTab onClick={() => setDrawerOpen(true)} />
-      )}
-
-      <Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
-        <DrawerContent className="h-[400px]">
-          <DrawerHeader className="pb-2">
-            <DrawerTitle className="text-center">Quick Tools</DrawerTitle>
-            
-            <div className="flex justify-center gap-2 mt-2">
-              <Button
-                size="sm"
-                variant={drawerCard === "dialer" ? "default" : "outline"}
-                onClick={() => setDrawerCard("dialer")}
-                className="flex items-center gap-2"
-              >
-                <Phone className="h-4 w-4" />
-                Unified Dialer
-              </Button>
-              <Button
-                size="sm"
-                variant={drawerCard === "email" ? "default" : "outline"}
-                onClick={() => setDrawerCard("email")}
-                className="flex items-center gap-2"
-              >
-                <Mail className="h-4 w-4" />
-                Email
-              </Button>
-              <Button
-                size="sm"
-                variant={drawerCard === "callLogs" ? "default" : "outline"}
-                onClick={() => setDrawerCard("callLogs")}
-                className="flex items-center gap-2"
-              >
-                <FileText className="h-4 w-4" />
-                Call Logs
-              </Button>
-            </div>
-          </DrawerHeader>
-
-          <div className="flex-1 overflow-auto p-4">
-            {drawerCard === "dialer" && (
-              <div className="max-w-md mx-auto">
-                <UnifiedDialer 
-                  onCallInitiated={handleCallInitiated} 
-                  disabled={false} 
-                  initialData={dialerData}
-                />
-              </div>
-            )}
-            
-            {drawerCard === "email" && (
-              <div className="max-w-2xl mx-auto">
-                <SimpleEmailHistory />
-              </div>
-            )}
-            
-            {drawerCard === "callLogs" && (
-              <div className="max-w-4xl mx-auto">
-                <CallHistory calls={mockCallHistory} />
-              </div>
-            )}
-          </div>
-        </DrawerContent>
-      </Drawer>
-    </div>
+    </SidebarProvider>
   );
 };
 
