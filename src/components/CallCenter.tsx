@@ -5,6 +5,7 @@ import { useAMIContext } from "@/contexts/AMIContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { callRecordsService, CallRecord } from "@/services/callRecordsService";
 import { simpleEmailService } from "@/services/simpleEmailService";
+import { amiCallRecordHandler } from "@/services/amiCallRecordHandler";
 import CallHistory from "./call-center/CallHistory";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RefreshCw } from "lucide-react";
@@ -26,16 +27,31 @@ const CallCenter = ({ userRole }: CallCenterProps) => {
   const [callHistory, setCallHistory] = useState<EnhancedCallRecord[]>([]);
   const [loading, setLoading] = useState(false);
 
+  // Initialize AMI call record handler
+  useEffect(() => {
+    console.log('[CallCenter] Initializing AMI call record handler');
+    amiCallRecordHandler.initialize();
+    
+    return () => {
+      // Cleanup on unmount
+      amiCallRecordHandler.cleanup();
+    };
+  }, []);
+
   const loadEnhancedCallHistory = () => {
     setLoading(true);
     try {
-      const rawRecords = callRecordsService.getRecords().slice(0, 20);
+      const rawRecords = callRecordsService.getRecords();
       const emailLogs = simpleEmailService.getEmailLogs();
       const leads = JSON.parse(localStorage.getItem('leads') || '[]');
 
       console.log('[CallCenter] Loading call history:', rawRecords.length, 'records');
+      console.log('[CallCenter] Raw records:', rawRecords);
 
-      const enhancedRecords: EnhancedCallRecord[] = rawRecords.map(record => {
+      // Show more records (up to 50 instead of 20)
+      const recentRecords = rawRecords.slice(0, 50);
+
+      const enhancedRecords: EnhancedCallRecord[] = recentRecords.map(record => {
         // Find matching lead
         const lead = leads.find((l: any) => 
           l.phone === record.phone || 
@@ -72,8 +88,8 @@ const CallCenter = ({ userRole }: CallCenterProps) => {
 
   // Subscribe to call records service and reload enhanced data
   useEffect(() => {
-    const unsubscribe = callRecordsService.subscribe(() => {
-      console.log('[CallCenter] Call records updated, refreshing display');
+    const unsubscribe = callRecordsService.subscribe((records) => {
+      console.log('[CallCenter] Call records updated, refreshing display. New count:', records.length);
       loadEnhancedCallHistory();
     });
 
@@ -81,12 +97,12 @@ const CallCenter = ({ userRole }: CallCenterProps) => {
     return unsubscribe;
   }, []);
 
-  // Auto-refresh every 30 seconds to catch any missed updates
+  // More frequent auto-refresh to catch any missed updates
   useEffect(() => {
     const interval = setInterval(() => {
       console.log('[CallCenter] Auto-refreshing call history');
       loadEnhancedCallHistory();
-    }, 30000);
+    }, 15000); // Reduced from 30 seconds to 15 seconds
 
     return () => clearInterval(interval);
   }, []);

@@ -1,3 +1,4 @@
+
 import { callRecordsService } from './callRecordsService';
 import { amiBridgeClient } from './amiBridgeClient';
 
@@ -23,7 +24,10 @@ class AMICallRecordHandler {
   private initialized: boolean = false;
 
   initialize() {
-    if (this.initialized) return;
+    if (this.initialized) {
+      console.log('[AMI Call Record Handler] Already initialized');
+      return;
+    }
 
     // Listen for AMI events
     amiBridgeClient.onEvent(this.handleAMIEvent.bind(this));
@@ -46,6 +50,42 @@ class AMICallRecordHandler {
       phone: callData.phone,
       startTime: callData.startTime
     });
+
+    // Create an immediate call record for dialer-initiated calls
+    this.createDialerCallRecord(callData);
+  }
+
+  private createDialerCallRecord(callData: any) {
+    // Get current user info
+    const userStr = localStorage.getItem('crm_user');
+    let agent = 'System';
+    
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        agent = user.name || 'Unknown Agent';
+      } catch (error) {
+        console.error('Failed to parse user info:', error);
+      }
+    }
+
+    const callRecord = {
+      leadName: callData.leadName,
+      phone: callData.phone,
+      duration: '00:00',
+      outcome: 'Dialing',
+      timestamp: new Date(callData.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      date: new Date(callData.startTime).toISOString().split('T')[0],
+      hasRecording: false,
+      notes: `Outbound call initiated via dialer`,
+      agent,
+      callType: 'outgoing' as const,
+      leadId: undefined,
+      dialerCallId: callData.id
+    };
+
+    callRecordsService.addRecord(callRecord);
+    console.log('[AMI Call Handler] Created initial dialer call record:', callRecord);
   }
 
   private handleAMIEvent(event: AMIEvent) {
@@ -63,6 +103,9 @@ class AMICallRecordHandler {
         break;
       case 'DialEnd':
         this.handleDialEnd(event);
+        break;
+      case 'Bridge':
+        this.handleBridge(event);
         break;
     }
   }
@@ -102,6 +145,26 @@ class AMICallRecordHandler {
       call.callerIdNum = event.calleridnum || call.callerIdNum;
       call.callerIdName = event.calleridname || call.callerIdName;
       console.log('[AMI Call Handler] Dial begin for:', call);
+
+      // Update existing dialer call record with "Ringing" status
+      this.updateDialerCallRecord(call, 'Ringing');
+    }
+  }
+
+  private handleBridge(event: AMIEvent) {
+    console.log('[AMI Call Handler] Bridge event:', event);
+    
+    // Find the call by checking both channels
+    const call = Array.from(this.activeCalls.values()).find(c => 
+      c.channel === event.channel1 || 
+      c.channel === event.channel2 ||
+      c.uniqueId === event.uniqueid1 ||
+      c.uniqueId === event.uniqueid2
+    );
+
+    if (call) {
+      console.log('[AMI Call Handler] Call connected (bridged):', call);
+      this.updateDialerCallRecord(call, 'Connected');
     }
   }
 
@@ -110,8 +173,14 @@ class AMICallRecordHandler {
 
     const call = this.activeCalls.get(event.uniqueid);
     if (call && event.dialstatus) {
-      // Always create a call record for DialEnd events
-      this.createCallRecord(call, event.dialstatus, event);
+      console.log('[AMI Call Handler] Dial end for call:', call, 'Status:', event.dialstatus);
+      
+      // Update the call record with final status
+      if (event.dialstatus === 'ANSWER') {
+        this.updateDialerCallRecord(call, 'Answered');
+      } else {
+        this.updateDialerCallRecord(call, this.mapOutcomeToStatus(event.dialstatus));
+      }
     }
   }
 
@@ -120,63 +189,41 @@ class AMICallRecordHandler {
 
     const call = this.activeCalls.get(event.uniqueid);
     if (call) {
-      const cause = event.cause || 'Unknown';
-      const causeTxt = event.causetxt || cause;
-      
-      // Create record for hangups that don't have a DialEnd record
-      this.createCallRecord(call, causeTxt, event);
+      const duration = this.calculateDuration(call.startTime, new Date());
+      console.log('[AMI Call Handler] Call hangup:', call, 'Duration:', duration);
+
+      // Update final call record with duration
+      this.updateDialerCallRecord(call, 'Completed', duration);
 
       this.activeCalls.delete(event.uniqueid);
-      console.log('[AMI Call Handler] Call hangup:', call);
+      
+      // Clean up dialer call data
+      if (call.dialerCallId) {
+        const dialerCall = Array.from(this.dialerCalls.values()).find(dc => dc.dialerCallId === call.dialerCallId);
+        if (dialerCall) {
+          this.dialerCalls.delete(dialerCall.phone);
+        }
+      }
     }
   }
 
-  private createCallRecord(call: ActiveCall, outcome: string, event: AMIEvent) {
-    const duration = this.calculateDuration(call.startTime, new Date());
-    const callType = this.determineCallType(call, event);
-    
-    // Use dialer call data if available
-    const dialerCall = call.dialerCallId ? 
-      Array.from(this.dialerCalls.values()).find(dc => dc.dialerCallId === call.dialerCallId) : 
-      null;
-    
-    const phone = dialerCall?.phone || call.callerIdNum || 'Unknown';
-    const leadName = dialerCall?.leadName || call.callerIdName || `Contact ${phone}`;
-    
-    // Get current user info
-    const userStr = localStorage.getItem('crm_user');
-    let agent = 'System';
-    
-    if (userStr) {
-      try {
-        const user = JSON.parse(userStr);
-        agent = user.name || 'Unknown Agent';
-      } catch (error) {
-        console.error('Failed to parse user info:', error);
-      }
-    }
+  private updateDialerCallRecord(call: ActiveCall, status: string, finalDuration?: string) {
+    if (!call.dialerCallId) return;
 
-    const callRecord = {
-      leadName,
-      phone,
-      duration,
-      outcome: this.mapOutcomeToStatus(outcome),
-      timestamp: call.startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      date: call.startTime.toISOString().split('T')[0],
-      hasRecording: false,
-      notes: `Call via ${call.channel}. Status: ${outcome}`,
-      agent,
-      callType,
-      leadId: undefined,
-      dialerCallId: call.dialerCallId
-    };
-
-    callRecordsService.addRecord(callRecord);
-    console.log('[AMI Call Handler] Created call record:', callRecord);
-
-    // Clean up dialer call data
-    if (dialerCall) {
-      this.dialerCalls.delete(dialerCall.phone);
+    // Find the existing record by dialerCallId
+    const records = callRecordsService.getRecords();
+    const existingRecord = records.find(r => r.dialerCallId === call.dialerCallId);
+    
+    if (existingRecord) {
+      const duration = finalDuration || this.calculateDuration(call.startTime, new Date());
+      
+      callRecordsService.updateRecord(existingRecord.id, {
+        outcome: status,
+        duration: duration,
+        notes: `${existingRecord.notes}. Final status: ${status}`
+      });
+      
+      console.log('[AMI Call Handler] Updated call record:', existingRecord.id, 'with status:', status);
     }
   }
 
@@ -186,13 +233,6 @@ class AMICallRecordHandler {
     const remainingSeconds = seconds % 60;
     
     return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
-  }
-
-  private determineCallType(call: ActiveCall, event: AMIEvent): 'incoming' | 'outgoing' {
-    if (call.dialerCallId || call.context === 'from-internal' || event.channel?.includes('Local/')) {
-      return 'outgoing';
-    }
-    return 'incoming';
   }
 
   private mapOutcomeToStatus(outcome: string): string {
@@ -212,6 +252,7 @@ class AMICallRecordHandler {
     this.activeCalls.clear();
     this.dialerCalls.clear();
     this.initialized = false;
+    console.log('[AMI Call Record Handler] Cleaned up');
   }
 }
 
